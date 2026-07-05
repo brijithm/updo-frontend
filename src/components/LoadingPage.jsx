@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import loadingVideo from '../assets/loading page.mp4';
+import loadingVideo from "../assets/Loading Page.mp4";
 
 function LoadingPage({ onComplete }) {
   const videoRef = useRef(null);
