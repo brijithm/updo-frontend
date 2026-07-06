@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useLayoutEffect } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png";
 
@@ -44,6 +44,19 @@ export default function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
+  // --- height-animated wrapper so the field block grows/shrinks smoothly ---
+  const fieldsContentRef = useRef(null);
+  const [fieldsHeight, setFieldsHeight] = useState(undefined);
+  const hasMeasuredOnce = useRef(false);
+
+  useLayoutEffect(() => {
+    if (!fieldsContentRef.current) return;
+    const newHeight = fieldsContentRef.current.scrollHeight;
+    setFieldsHeight(newHeight);
+    hasMeasuredOnce.current = true;
+  }, [activeTab]);
+  // ---------------------------------------------------------------------
+
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -66,6 +79,31 @@ export default function LoginPage() {
 
   return (
     <div className="w-full min-h-screen bg-[#060E20] flex items-center justify-center">
+      <style>{`
+        @keyframes authFieldsShift {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .auth-fields-anim {
+          animation: authFieldsShift 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        .auth-fields-wrapper {
+          overflow: hidden;
+          transition: height 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .auth-tab-pill {
+          transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .auth-tab-btn {
+          transition: color 0.25s ease;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .auth-fields-anim { animation: none; }
+          .auth-fields-wrapper { transition: none; }
+          .auth-tab-pill { transition: none; }
+        }
+      `}</style>
+
       <div className="w-full max-w-[1530px] min-h-screen flex flex-col lg:flex-row">
         {/* Left panel */}
         <div className="flex-1 relative overflow-hidden bg-[#0B1326] flex flex-col justify-center px-16 py-20">
@@ -93,22 +131,23 @@ export default function LoginPage() {
             </div>
 
             {/* Tabs */}
-            <div className="flex p-1 bg-[#060E20] rounded-lg outline outline-1 outline-offset-[-1px] outline-[#494454]">
+            <div className="relative flex p-1 bg-[#060E20] rounded-lg outline outline-1 outline-offset-[-1px] outline-[#494454]">
+              <div
+                aria-hidden="true"
+                className="auth-tab-pill absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-md bg-[#663399]"
+                style={{ transform: activeTab === "signup" ? "translateX(100%)" : "translateX(0%)" }}
+              />
               <button
                 type="button"
                 onClick={() => setActiveTab("login")}
-                className={`flex-1 px-4 py-2 rounded-md text-sm font-bold font-poppins tracking-tight ${
-                  activeTab === "login" ? "bg-[#663399] text-[#F5F7FA]" : "text-[#F5F7FA]"
-                }`}
+                className="auth-tab-btn relative z-10 flex-1 px-4 py-2 rounded-md text-sm font-bold font-poppins tracking-tight text-[#F5F7FA]"
               >
                 Log In
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab("signup")}
-                className={`flex-1 px-4 py-2 rounded-md text-sm font-bold font-poppins tracking-tight ${
-                  activeTab === "signup" ? "bg-[#663399] text-[#F5F7FA]" : "text-[#F5F7FA]"
-                }`}
+                className="auth-tab-btn relative z-10 flex-1 px-4 py-2 rounded-md text-sm font-bold font-poppins tracking-tight text-[#F5F7FA]"
               >
                 Sign Up
               </button>
@@ -128,86 +167,95 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {activeTab === "login" ? (
-                /* Login: single password field */
-                <div className="flex flex-col gap-1">
-                  <div className="flex justify-between items-center px-1">
-                    <label className="text-[#CBC3D7] text-sm font-medium font-poppins tracking-tight">Password</label>
-                    <Link to="/forgot-password" className="text-[#D0BCFF] text-xs font-semibold font-poppins tracking-wide">
-                      Forgot Password?
-                    </Link>
-                  </div>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#958EA0]">
-                      <LockIcon />
-                    </span>
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="••••••••"
-                      required
-                      className={inputBase}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((v) => !v)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-[#958EA0] hover:text-[#F5F7FA]"
-                    >
-                      {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                /* Signup: new password + confirm password */
-                <>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[#CBC3D7] text-sm font-medium font-poppins tracking-tight">New Password</label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#958EA0]">
-                        <LockIcon />
-                      </span>
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        placeholder="••••••••"
-                        required
-                        value={passwordValue}
-                        onChange={(e) => setPasswordValue(e.target.value)}
-                        className={inputBase}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword((v) => !v)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-[#958EA0] hover:text-[#F5F7FA]"
-                      >
-                        {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                      </button>
+              {/* Animated-height wrapper: height transitions between the login (1 field)
+                  and signup (2 field) layouts instead of snapping instantly. */}
+              <div
+                className="auth-fields-wrapper"
+                style={{ height: fieldsHeight !== undefined ? `${fieldsHeight}px` : "auto" }}
+              >
+                <div key={activeTab} ref={fieldsContentRef} className="auth-fields-anim flex flex-col gap-4">
+                  {activeTab === "login" ? (
+                    /* Login: single password field */
+                    <div className="flex flex-col gap-1">
+                      <div className="flex justify-between items-center px-1">
+                        <label className="text-[#CBC3D7] text-sm font-medium font-poppins tracking-tight">Password</label>
+                        <Link to="/forgot-password" className="text-[#D0BCFF] text-xs font-semibold font-poppins tracking-wide">
+                          Forgot Password?
+                        </Link>
+                      </div>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#958EA0]">
+                          <LockIcon />
+                        </span>
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          placeholder="••••••••"
+                          required
+                          className={inputBase}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((v) => !v)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-[#958EA0] hover:text-[#F5F7FA]"
+                        >
+                          {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    /* Signup: new password + confirm password */
+                    <>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[#CBC3D7] text-sm font-medium font-poppins tracking-tight">New Password</label>
+                        <div className="relative">
+                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#958EA0]">
+                            <LockIcon />
+                          </span>
+                          <input
+                            type={showPassword ? "text" : "password"}
+                            placeholder="••••••••"
+                            required
+                            value={passwordValue}
+                            onChange={(e) => setPasswordValue(e.target.value)}
+                            className={inputBase}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword((v) => !v)}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-[#958EA0] hover:text-[#F5F7FA]"
+                          >
+                            {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                          </button>
+                        </div>
+                      </div>
 
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[#CBC3D7] text-sm font-medium font-poppins tracking-tight">Confirm Password</label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#958EA0]">
-                        <LockIcon />
-                      </span>
-                      <input
-                        type={showConfirmPassword ? "text" : "password"}
-                        placeholder="••••••••"
-                        required
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        className={inputBase}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword((v) => !v)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-[#958EA0] hover:text-[#F5F7FA]"
-                      >
-                        {showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
-                      </button>
-                    </div>
-                  </div>
-                </>
-              )}
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[#CBC3D7] text-sm font-medium font-poppins tracking-tight">Confirm Password</label>
+                        <div className="relative">
+                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#958EA0]">
+                            <LockIcon />
+                          </span>
+                          <input
+                            type={showConfirmPassword ? "text" : "password"}
+                            placeholder="••••••••"
+                            required
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            className={inputBase}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword((v) => !v)}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-[#958EA0] hover:text-[#F5F7FA]"
+                          >
+                            {showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
 
               {passwordError && (
                 <p className="text-red-400 text-sm font-poppins -mt-2">{passwordError}</p>
