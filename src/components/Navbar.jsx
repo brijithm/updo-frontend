@@ -1,7 +1,9 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
 
 // Shared top nav used on Dashboard, Campaign, Brand Settings, and Home.
-// Active-route highlighting is handled entirely by NavLink — no backend needed.
+// Active-route highlighting is handled by NavLink; the underline position
+// is tracked separately so it can slide smoothly between tabs.
 const NAV_LINKS = [
   { label: "Dashboard", to: "/dashboard" },
   { label: "Campaign", to: "/campaign" },
@@ -10,6 +12,20 @@ const NAV_LINKS = [
 ];
 
 export default function Navbar() {
+  const location = useLocation();
+  const linkRefs = useRef({});
+  const [indicator, setIndicator] = useState({ left: 0, width: 0, opacity: 0 });
+
+  useEffect(() => {
+    const active = NAV_LINKS.find((link) =>
+      link.to === "/" ? location.pathname === "/" : location.pathname.startsWith(link.to)
+    );
+    const el = active && linkRefs.current[active.to];
+    if (el) {
+      setIndicator({ left: el.offsetLeft, width: el.offsetWidth, opacity: 1 });
+    }
+  }, [location.pathname]);
+
   return (
     <header className="relative w-full flex justify-center pt-8">
       {/* Ambient glow behind the nav — gives the backdrop-blur something to catch */}
@@ -24,16 +40,19 @@ export default function Navbar() {
         </div>
 
         {/* Links */}
-        <ul className="flex items-center gap-8 px-6">
+        <ul className="relative flex items-center gap-8 px-6">
+          {/* Sliding active-tab indicator — repositions on route change */}
+          <span
+            className="absolute -bottom-1 h-[3px] rounded-full bg-purple-500 shadow-[0_0_4px_1px_rgba(169,88,250,0.5)] transition-all duration-300 ease-out"
+            style={{ left: indicator.left, width: indicator.width, opacity: indicator.opacity }}
+          />
           {NAV_LINKS.map((link) => (
-            <li key={link.to}>
+            <li key={link.to} ref={(el) => (linkRefs.current[link.to] = el)}>
               <NavLink
                 to={link.to}
                 className={({ isActive }) =>
-                  `relative pb-1 text-2xl font-normal font-['K2D'] transition-colors ${
-                    isActive
-                      ? "text-white after:content-[''] after:absolute after:left-0 after:right-0 after:-bottom-1 after:h-[3px] after:rounded-full after:bg-purple-500 after:shadow-[0_0_4px_1px_rgba(169,88,250,0.5)]"
-                      : "text-white/70 hover:text-white"
+                  `relative pb-1 text-2xl font-normal font-['K2D'] transition-colors duration-300 ${
+                    isActive ? "text-white" : "text-white/70 hover:text-white"
                   }`
                 }
               >

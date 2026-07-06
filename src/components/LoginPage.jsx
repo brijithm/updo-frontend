@@ -1,4 +1,4 @@
-import React, { useState, useRef, useLayoutEffect } from "react";
+import React, { useState, useRef, useLayoutEffect, useEffect } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png";
 
@@ -44,18 +44,39 @@ export default function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
+  // --- page-entrance animation (fade in + rise up on mount) ---
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+  const enter = (delay = "") =>
+    `transition-all duration-700 ease-out ${delay} ${
+      mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+    }`;
+  // ---------------------------------------------------------------------
+
   // --- height-animated wrapper so the field block grows/shrinks smoothly ---
   const fieldsContentRef = useRef(null);
   const [fieldsHeight, setFieldsHeight] = useState(undefined);
-  const hasMeasuredOnce = useRef(false);
 
   useLayoutEffect(() => {
     if (!fieldsContentRef.current) return;
-    const newHeight = fieldsContentRef.current.scrollHeight;
-    setFieldsHeight(newHeight);
-    hasMeasuredOnce.current = true;
+    setFieldsHeight(fieldsContentRef.current.scrollHeight);
   }, [activeTab]);
   // ---------------------------------------------------------------------
+
+  const handleTabChange = (tab) => {
+    if (tab === activeTab) return;
+    setActiveTab(tab);
+    // reset transient field state so switching tabs never carries over
+    // stale errors/values from the other form
+    setPasswordError("");
+    setPasswordValue("");
+    setConfirmPassword("");
+    setShowPassword(false);
+    setShowConfirmPassword(false);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -80,12 +101,17 @@ export default function LoginPage() {
   return (
     <div className="w-full min-h-screen bg-[#060E20] flex items-center justify-center">
       <style>{`
-        @keyframes authFieldsShift {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
+        /* Field crossfade: opacity ONLY. We intentionally do not combine this
+           with a translateY, because the height wrapper below is already
+           animating (clip-reveal). Two simultaneous motions (clip + slide)
+           fight each other and read as jank -- opacity-only reads as clean. */
+        @keyframes authFieldsFade {
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
         .auth-fields-anim {
-          animation: authFieldsShift 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+          animation: authFieldsFade 0.3s ease-out both;
+          animation-delay: 0.05s;
         }
         .auth-fields-wrapper {
           overflow: hidden;
@@ -93,36 +119,46 @@ export default function LoginPage() {
         }
         .auth-tab-pill {
           transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+          will-change: transform;
         }
         .auth-tab-btn {
           transition: color 0.25s ease;
+        }
+        .auth-card {
+          transition: transform 0.25s ease, box-shadow 0.25s ease;
+        }
+        .auth-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 20px 40px -20px rgba(208, 188, 255, 0.25);
         }
         @media (prefers-reduced-motion: reduce) {
           .auth-fields-anim { animation: none; }
           .auth-fields-wrapper { transition: none; }
           .auth-tab-pill { transition: none; }
+          .auth-card { transition: none; }
+          .auth-card:hover { transform: none; }
         }
       `}</style>
 
       <div className="w-full max-w-[1530px] min-h-screen flex flex-col lg:flex-row">
         {/* Left panel */}
         <div className="flex-1 relative overflow-hidden bg-[#0B1326] flex flex-col justify-center px-16 py-20">
-          <div className="mb-8 flex items-center gap-2">
+          <div className={`mb-8 flex items-center gap-2 ${enter()}`}>
             <img src={logo} alt="UPDO" className="h-9 w-auto" />
             <span className="font-afacad text-2xl font-bold text-[#D0BCFF] tracking-tight">AI</span>
           </div>
 
-          <h1 className="font-afacad text-4xl lg:text-5xl text-white leading-tight mb-6 max-w-lg">
+          <h1 className={`font-afacad text-4xl lg:text-5xl text-white leading-tight mb-6 max-w-lg ${enter("delay-100")}`}>
             Elevate your brand with the power of enterprise-grade AI.
           </h1>
-          <p className="font-poppins text-[#F5F7FA]/70 text-base max-w-md">
+          <p className={`font-poppins text-[#F5F7FA]/70 text-base max-w-md ${enter("delay-200")}`}>
             Join the next generation of content creators using intelligent automation to scale global reach.
           </p>
         </div>
 
         {/* Right panel */}
         <div className="flex-1 flex items-center justify-center p-8 bg-[#03144C]">
-          <div className="w-full max-w-96 flex flex-col gap-6">
+          <div className={`auth-card w-full max-w-96 flex flex-col gap-6 rounded-xl p-2 ${enter("delay-150")}`}>
             <div className="flex flex-col gap-1 pb-2">
               <h2 className="text-white text-3xl font-semibold">Welcome back</h2>
               <p className="text-[#F5F7FA] text-base font-bold font-poppins">
@@ -134,20 +170,24 @@ export default function LoginPage() {
             <div className="relative flex p-1 bg-[#060E20] rounded-lg outline outline-1 outline-offset-[-1px] outline-[#494454]">
               <div
                 aria-hidden="true"
-                className="auth-tab-pill absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-md bg-[#663399]"
+                className="auth-tab-pill absolute top-1 bottom-1 left-1 w-[calc(50%_-_4px)] rounded-md bg-[#663399]"
                 style={{ transform: activeTab === "signup" ? "translateX(100%)" : "translateX(0%)" }}
               />
               <button
                 type="button"
-                onClick={() => setActiveTab("login")}
-                className="auth-tab-btn relative z-10 flex-1 px-4 py-2 rounded-md text-sm font-bold font-poppins tracking-tight text-[#F5F7FA]"
+                onClick={() => handleTabChange("login")}
+                className={`auth-tab-btn relative z-10 flex-1 px-4 py-2 rounded-md text-sm font-bold font-poppins tracking-tight ${
+                  activeTab === "login" ? "text-white" : "text-[#CBC3D7]"
+                }`}
               >
                 Log In
               </button>
               <button
                 type="button"
-                onClick={() => setActiveTab("signup")}
-                className="auth-tab-btn relative z-10 flex-1 px-4 py-2 rounded-md text-sm font-bold font-poppins tracking-tight text-[#F5F7FA]"
+                onClick={() => handleTabChange("signup")}
+                className={`auth-tab-btn relative z-10 flex-1 px-4 py-2 rounded-md text-sm font-bold font-poppins tracking-tight ${
+                  activeTab === "signup" ? "text-white" : "text-[#CBC3D7]"
+                }`}
               >
                 Sign Up
               </button>
@@ -168,7 +208,8 @@ export default function LoginPage() {
               </div>
 
               {/* Animated-height wrapper: height transitions between the login (1 field)
-                  and signup (2 field) layouts instead of snapping instantly. */}
+                  and signup (2 field) layouts, while inner content only crossfades
+                  opacity -- no translateY, to avoid fighting the height animation. */}
               <div
                 className="auth-fields-wrapper"
                 style={{ height: fieldsHeight !== undefined ? `${fieldsHeight}px` : "auto" }}
@@ -263,7 +304,7 @@ export default function LoginPage() {
 
               <button
                 type="submit"
-                className="w-full py-4 bg-[#D0BCFF] rounded-lg text-[#0B1326] text-base font-medium font-afacad tracking-tight shadow-lg hover:bg-[#CBC3D7] transition-colors"
+                className="w-full py-4 bg-[#D0BCFF] rounded-lg text-[#0B1326] text-base font-medium font-afacad tracking-tight shadow-lg hover:bg-[#CBC3D7] hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200"
               >
                 {activeTab === "login" ? "Confirm" : "Create Account"}
               </button>
