@@ -31,13 +31,13 @@ function GlowBorder({ as: Tag = "div", radius = "9999px", size = 220, className 
       onMouseMove={handleMove}
       onMouseEnter={() => setActive(true)}
       onMouseLeave={() => setActive(false)}
-      className={"relative transition-transform duration-200 hover:-translate-y-0.5 " + className}
+      className={"relative transition-transform duration-300 ease-out hover:-translate-y-0.5 " + className}
       style={{ borderRadius: radius }}
       {...rest}
     >
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 transition-opacity duration-300"
+        className="pointer-events-none absolute inset-0 transition-opacity duration-500 ease-out"
         style={{
           borderRadius: radius,
           opacity: active ? 1 : 0,
@@ -78,27 +78,28 @@ export default function LandingPage() {
         }
 
         @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(16px); }
-          to { opacity: 1; transform: translateY(0); }
+          from { opacity: 0; transform: translateY(18px) scale(0.985); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
         }
         .fade-up { opacity: 0; }
-        .start-anim .fade-up { animation: fadeUp 0.7s ease-out both; }
-        .fade-up-1 { animation-delay: 0.05s; }
-        .fade-up-2 { animation-delay: 0.15s; }
-        .fade-up-3 { animation-delay: 0.25s; }
-        .fade-up-4 { animation-delay: 0.35s; }
-        .fade-up-5 { animation-delay: 0.45s; }
+        .start-anim .fade-up { animation: fadeUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        .fade-up-0 { animation-delay: 0s; }
+        .fade-up-1 { animation-delay: 0.1s; }
+        .fade-up-2 { animation-delay: 0.2s; }
+        .fade-up-3 { animation-delay: 0.3s; }
+        .fade-up-4 { animation-delay: 0.42s; }
+        .fade-up-5 { animation-delay: 0.54s; }
 
         @media (prefers-reduced-motion: reduce) {
-          .fade-up { animation: none; }
+          .fade-up { animation: none; opacity: 1; }
         }
       `}</style>
 
-      <header className="relative flex items-center justify-between px-6 sm:px-10 h-[92px]">
+      <header className="fade-up fade-up-0 relative flex items-center justify-between px-6 sm:px-10 h-[92px]">
         <img src={logo} alt="UPDO" className="h-8 sm:h-9 w-auto" />
 
         <nav className="flex items-center gap-6 sm:gap-8 font-afacad">
-          <Link to="/login" className="text-lg sm:text-xl text-[#F5F5F5] hover:opacity-80 transition-opacity">Log In</Link>
+          <Link to="/login" className="text-lg sm:text-xl text-[#F5F5F5] hover:opacity-80 transition-opacity duration-300">Log In</Link>
           <GlowBorder as={Link} to="/login" size={140} className="rounded-full px-6 py-2.5 text-lg sm:text-xl text-[#F5F5F5]/80 bg-[rgba(102,51,153,0.20)] hover:bg-[rgba(102,51,153,0.32)]">Get Started</GlowBorder>
         </nav>
 
@@ -135,16 +136,16 @@ export default function LandingPage() {
 
           <div className="flex items-center gap-6 sm:gap-8">
             {socials.map(({ icon, label, href }) => (
-              <a key={label} href={href} aria-label={label} className="opacity-60 hover:opacity-100 hover:-translate-y-0.5 transition-all">
+              <a key={label} href={href} aria-label={label} className="opacity-60 hover:opacity-100 hover:-translate-y-0.5 transition-all duration-300 ease-out">
                 <img src={icon} alt={label} className="w-9 h-9 sm:w-10 sm:h-10" />
               </a>
             ))}
           </div>
 
           <p className="font-afacad text-sm sm:text-base text-white/50 text-center">
-            <a href="#privacy" className="hover:text-white/70 transition-colors">Privacy Policy</a>
+            <a href="#privacy" className="hover:text-white/70 transition-colors duration-300">Privacy Policy</a>
             {" "}|{" "}
-            <a href="#terms" className="hover:text-white/70 transition-colors">Terms &amp; Conditions</a>
+            <a href="#terms" className="hover:text-white/70 transition-colors duration-300">Terms &amp; Conditions</a>
             {" "}Applied
           </p>
         </div>
