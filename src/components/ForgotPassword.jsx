@@ -13,6 +13,31 @@ const MailIcon = () => (
 const inputBase =
   "w-full pl-11 pr-4 py-4 bg-[#0B1326] rounded-lg outline outline-1 outline-offset-[-1px] outline-[#494454] text-[#F5F7FA] placeholder:text-[#958EA0] text-base font-poppins focus:outline-[#D0BCFF]";
 
+// Map common email domains to their webmail inbox URL.
+// Falls back to null (button hidden) for unrecognized domains, since we
+// can't guess a generic provider's webmail URL.
+const WEBMAIL_URLS = {
+  "gmail.com": "https://mail.google.com/mail/u/0/#inbox",
+  "googlemail.com": "https://mail.google.com/mail/u/0/#inbox",
+  "outlook.com": "https://outlook.live.com/mail/0/inbox",
+  "hotmail.com": "https://outlook.live.com/mail/0/inbox",
+  "live.com": "https://outlook.live.com/mail/0/inbox",
+  "msn.com": "https://outlook.live.com/mail/0/inbox",
+  "yahoo.com": "https://mail.yahoo.com",
+  "yahoo.co.in": "https://mail.yahoo.com",
+  "icloud.com": "https://www.icloud.com/mail",
+  "me.com": "https://www.icloud.com/mail",
+  "protonmail.com": "https://mail.proton.me",
+  "proton.me": "https://mail.proton.me",
+  "zoho.com": "https://mail.zoho.com",
+  "aol.com": "https://mail.aol.com",
+};
+
+function getWebmailUrl(email) {
+  const domain = email.split("@")[1]?.toLowerCase().trim();
+  return domain ? WEBMAIL_URLS[domain] || null : null;
+}
+
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -33,6 +58,8 @@ export default function ForgotPassword() {
       setIsSubmitting(false);
     }
   };
+
+  const webmailUrl = getWebmailUrl(email);
 
   return (
     <div className="w-full min-h-screen bg-[#060E20] flex items-center justify-center">
@@ -67,9 +94,25 @@ export default function ForgotPassword() {
                 <p className="text-[#CBC3D7] text-sm font-poppins">
                   If an account exists for <span className="text-[#F5F7FA] font-semibold">{email}</span>, a reset link is on its way.
                 </p>
+
+                {webmailUrl && (
+                  <a
+                    href={webmailUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-4 bg-[#D0BCFF] rounded-lg text-[#0B1326] text-base font-medium font-afacad tracking-tight shadow-lg hover:bg-[#CBC3D7] transition-colors text-center"
+                  >
+                    Open Mail
+                  </a>
+                )}
+
                 <Link
                   to="/login"
-                  className="w-full py-4 bg-[#D0BCFF] rounded-lg text-[#0B1326] text-base font-medium font-afacad tracking-tight shadow-lg hover:bg-[#CBC3D7] transition-colors text-center"
+                  className={
+                    webmailUrl
+                      ? "text-[#D0BCFF] text-sm font-semibold font-poppins tracking-wide text-center"
+                      : "w-full py-4 bg-[#D0BCFF] rounded-lg text-[#0B1326] text-base font-medium font-afacad tracking-tight shadow-lg hover:bg-[#CBC3D7] transition-colors text-center"
+                  }
                 >
                   Back to Log In
                 </Link>

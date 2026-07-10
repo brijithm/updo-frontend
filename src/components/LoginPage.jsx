@@ -101,7 +101,7 @@ export default function LoginPage() {
         navigate("/dashboard");
       } else {
         await registerUser(email, passwordValue, fullName);
-        navigate("/check-your-email");
+        navigate("/check-your-email", { state: { email } });
       }
     } catch (err) {
       setAuthError(err.message || "Something went wrong. Please try again.");

@@ -1,8 +1,39 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import logo from "../assets/logo.png";
 
+// Map common email domains to their webmail inbox URL.
+// Falls back to Gmail's login page if the domain isn't recognized or the
+// email wasn't passed through navigation state.
+const WEBMAIL_URLS = {
+  "gmail.com": "https://mail.google.com/mail/u/0/#inbox",
+  "googlemail.com": "https://mail.google.com/mail/u/0/#inbox",
+  "outlook.com": "https://outlook.live.com/mail/0/inbox",
+  "hotmail.com": "https://outlook.live.com/mail/0/inbox",
+  "live.com": "https://outlook.live.com/mail/0/inbox",
+  "msn.com": "https://outlook.live.com/mail/0/inbox",
+  "yahoo.com": "https://mail.yahoo.com",
+  "yahoo.co.in": "https://mail.yahoo.com",
+  "icloud.com": "https://www.icloud.com/mail",
+  "me.com": "https://www.icloud.com/mail",
+  "protonmail.com": "https://mail.proton.me",
+  "proton.me": "https://mail.proton.me",
+  "zoho.com": "https://mail.zoho.com",
+  "aol.com": "https://mail.aol.com",
+};
+
+const DEFAULT_WEBMAIL_URL = "https://mail.google.com";
+
+function getWebmailUrl(email) {
+  const domain = email?.split("@")[1]?.toLowerCase().trim();
+  return (domain && WEBMAIL_URLS[domain]) || DEFAULT_WEBMAIL_URL;
+}
+
 export default function CheckYourEmail() {
+  const location = useLocation();
+  const email = location.state?.email;
+  const webmailUrl = getWebmailUrl(email);
+
   return (
     <div className="w-full min-h-screen bg-[#060E20] flex items-center justify-center">
       <style>{`
@@ -64,12 +95,12 @@ export default function CheckYourEmail() {
               </p>
 
               <a
-                href="https://mail.google.com"
+                href={webmailUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full py-4 bg-[#D0BCFF] rounded-lg text-[#0B1326] text-base font-medium font-afacad tracking-tight shadow-lg hover:bg-[#CBC3D7] transition-colors text-center"
               >
-                Go to Gmail
+                Open Mail
               </a>
 
               <Link
