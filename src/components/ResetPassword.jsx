@@ -1,7 +1,12 @@
-import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { createClient } from "@supabase/supabase-js";
 import logo from "../assets/logo.png";
 import { resetPassword } from "../services/authService";
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const LockIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -29,30 +34,17 @@ const inputBase =
   "w-full pl-11 pr-4 py-4 bg-[#0B1326] rounded-lg outline outline-1 outline-offset-[-1px] outline-[#494454] text-[#F5F7FA] placeholder:text-[#958EA0] text-base font-poppins focus:outline-[#D0BCFF]";
 
 // ---------------------------------------------------------------------------
-// Supabase's password-recovery email links land here with the access token
-// in the URL *hash* (e.g. #access_token=...&type=recovery&...), not a query
-// param -- so we parse window.location.hash directly rather than using
-// useSearchParams (which only reads the ?query part).
+// Supabase's PKCE recovery links land here with a `token_hash` query param
+// (?token_hash=...&type=recovery), not a hash fragment. We exchange that
+// one-time code for a real session ONLY at submit time via verifyOtp() —
+// this avoids the implicit-flow issue where email link-scanners (Outlook
+// Safe Links, Gmail, etc.) pre-visit the link and burn the token before the
+// user ever clicks it.
 // ---------------------------------------------------------------------------
-function useRecoveryToken() {
-  const [accessToken, setAccessToken] = useState(null);
-  const [checked, setChecked] = useState(false);
-
-  useEffect(() => {
-    const hash = window.location.hash.startsWith("#")
-      ? window.location.hash.slice(1)
-      : window.location.hash;
-    const params = new URLSearchParams(hash);
-    setAccessToken(params.get("access_token"));
-    setChecked(true);
-  }, []);
-
-  return { accessToken, checked };
-}
 
 export default function ResetPassword() {
-  const navigate = useNavigate();
-  const { accessToken, checked } = useRecoveryToken();
+  const [searchParams] = useSearchParams();
+  const tokenHash = searchParams.get("token_hash");
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -74,7 +66,21 @@ export default function ResetPassword() {
     setIsSubmitting(true);
 
     try {
-      await resetPassword(newPassword, accessToken);
+      // Exchange the one-time recovery code for a real session.
+      const { data, error } = await supabase.auth.verifyOtp({
+        token_hash: tokenHash,
+        type: "recovery",
+      });
+
+      if (error || !data?.session?.access_token) {
+        setPasswordError(
+          "This reset link is invalid or has expired. Please request a new one."
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
+      await resetPassword(newPassword, data.session.access_token);
       setDone(true);
     } catch (err) {
       setPasswordError(err.message || "Something went wrong. Please try again.");
@@ -111,11 +117,7 @@ export default function ResetPassword() {
               </p>
             </div>
 
-            {!checked ? (
-              // Still parsing the URL hash -- avoid a flash of the invalid-link
-              // state while that happens.
-              <p className="text-[#CBC3D7] text-sm font-poppins">Loading...</p>
-            ) : !accessToken ? (
+            {!tokenHash ? (
               <div className="flex flex-col gap-4">
                 <p className="text-red-400 text-sm font-poppins">
                   This reset link is invalid or has expired. Please request a new one.
