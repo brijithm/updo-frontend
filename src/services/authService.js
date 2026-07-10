@@ -26,7 +26,8 @@ export async function loginUser(email, password) {
     throw new Error(data?.detail || "Invalid email or password");
   }
 
-  // Persist token so other API calls (brands, campaigns, etc.) can use it
+  // Persist token so other API calls (brands, campaigns, etc.) can use it,
+  // and so ProtectedRoute.jsx can tell the user is logged in.
   localStorage.setItem("updo_access_token", data.access_token);
   localStorage.setItem("updo_user_email", data.email);
 
@@ -58,7 +59,8 @@ export async function registerUser(email, password, fullName) {
 /**
  * Sends a password reset link to the given email.
  * Backend calls Supabase's reset_password_email(), which emails a link
- * pointing to /reset-password with a recovery token in the URL.
+ * pointing to /reset-password with a recovery token (as a token_hash
+ * query param) in the URL.
  * Returns { message, note } on success.
  * Throws an Error with a user-facing message on failure.
  */
@@ -80,9 +82,10 @@ export async function forgotPassword(email) {
 
 /**
  * Sets a new password after the user clicks the reset link from their email.
- * Requires the Supabase recovery access_token (pulled from the URL by
- * ResetPassword.jsx) since the backend's /auth/reset-password route is
- * protected by get_current_user.
+ * Requires a Supabase session access_token, obtained by ResetPassword.jsx
+ * via supabase.auth.verifyOtp() using the token_hash from the URL — since
+ * the backend's /auth/reset-password route is protected by get_current_user
+ * and expects a real Bearer JWT, not the raw one-time recovery code.
  * Returns { message, next_step } on success.
  * Throws an Error with a user-facing message on failure.
  */
@@ -103,4 +106,13 @@ export async function resetPassword(newPassword, accessToken) {
   }
 
   return data;
+}
+
+/**
+ * Clears the stored session. Call this from a "Log Out" button, then
+ * navigate("/login") in the component that calls it.
+ */
+export function logoutUser() {
+  localStorage.removeItem("updo_access_token");
+  localStorage.removeItem("updo_user_email");
 }

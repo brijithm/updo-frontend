@@ -1,10 +1,12 @@
 import { Navigate } from "react-router-dom";
 
-// TEMP: mocked auth check. Once the backend is connected, replace this with
-// a real check (e.g. a token in an AuthContext, or a /me API call) — the
-// routing logic below doesn't need to change either way.
+// Checks for the access token that authService.js stores on successful
+// login (see loginUser() in authService.js — it sets "updo_access_token").
+// This only checks presence, not validity/expiry; see note in authService.js
+// for a future upgrade path (e.g. verifying against /auth/me or checking
+// JWT expiry client-side).
 function isAuthenticated() {
-  return localStorage.getItem("updo_auth") === "true";
+  return !!localStorage.getItem("updo_access_token");
 }
 
 export default function ProtectedRoute({ children }) {
