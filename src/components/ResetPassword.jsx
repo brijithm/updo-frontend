@@ -4,10 +4,6 @@ import { createClient } from "@supabase/supabase-js";
 import logo from "../assets/logo.png";
 import { resetPassword } from "../services/authService";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
 const LockIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
@@ -33,14 +29,19 @@ const EyeOffIcon = () => (
 const inputBase =
   "w-full pl-11 pr-4 py-4 bg-[#0B1326] rounded-lg outline outline-1 outline-offset-[-1px] outline-[#494454] text-[#F5F7FA] placeholder:text-[#958EA0] text-base font-poppins focus:outline-[#D0BCFF]";
 
-// ---------------------------------------------------------------------------
-// Supabase's PKCE recovery links land here with a `token_hash` query param
-// (?token_hash=...&type=recovery), not a hash fragment. We exchange that
-// one-time code for a real session ONLY at submit time via verifyOtp() —
-// this avoids the implicit-flow issue where email link-scanners (Outlook
-// Safe Links, Gmail, etc.) pre-visit the link and burn the token before the
-// user ever clicks it.
-// ---------------------------------------------------------------------------
+// Lazily create the Supabase client only when actually needed (inside the
+// submit handler), and guard against missing env vars, so a misconfigured
+// deployment breaks ONLY this page instead of crashing the entire app on
+// import (which is what happens if createClient() runs at module scope
+// with undefined args).
+function getSupabaseClient() {
+  const url = import.meta.env.VITE_SUPABASE_URL;
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) {
+    throw new Error("Supabase is not configured for this deployment.");
+  }
+  return createClient(url, anonKey);
+}
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
@@ -66,7 +67,8 @@ export default function ResetPassword() {
     setIsSubmitting(true);
 
     try {
-      // Exchange the one-time recovery code for a real session.
+      const supabase = getSupabaseClient();
+
       const { data, error } = await supabase.auth.verifyOtp({
         token_hash: tokenHash,
         type: "recovery",
