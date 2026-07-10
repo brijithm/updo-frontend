@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import Navbar from "./Navbar";
-import { saveBrandSettings } from "../services/brandService";
+import { saveBrandSettings, getMyBrands, uploadBrandLogo } from "../services/brandService";
 import facebookIcon from "../assets/Facebook.svg";
 import linkedinIcon from "../assets/LinkedIn.svg";
 import instagramIcon from "../assets/Instagram.svg";
@@ -10,11 +10,13 @@ import twitterIcon from "../assets/X.svg";
 // Brand creation is a ONE-TIME edit, not a live-editable settings page:
 //   - User fills in whatever they have (only Brand Name is required).
 //   - Confirm locks everything (fields fade + become read-only) and saves
-//     to the backend permanently via saveBrandSettings().
-//   - Reset is the only way out of the locked state — it wipes the form
-//     back to empty AND unlocks it, so the user can start over from
-//     scratch. It is intentionally NOT faded/disabled when locked, since
-//     that's its whole job.
+//     to the backend permanently via saveBrandSettings(), then uploads the
+//     logo file (if any) via uploadBrandLogo() using the new brand's id.
+//   - Reset is only available BEFORE confirmation — once locked, it's
+//     disabled. Locking in is permanent from the UI's perspective.
+//   - On mount, we check the backend for an existing brand (getMyBrands())
+//     and pre-fill + lock the form if one is found, so a brand saved
+//     earlier (even via Swagger/another session) shows up correctly.
 // ---------------------------------------------------------------------------
 
 const SOCIAL_PLATFORMS = [
@@ -133,6 +135,44 @@ export default function BrandSettings() {
   const [brandNameError, setBrandNameError] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [loadingExisting, setLoadingExisting] = useState(true);
+
+  // On mount: check if the user already has a saved brand (from this
+  // session, an earlier one, or even Swagger) and pre-fill + lock if so.
+  useEffect(() => {
+    async function loadExistingBrand() {
+      try {
+        const brands = await getMyBrands();
+        if (brands.length > 0) {
+          const brand = brands[0];
+          setForm({
+            brandName: brand.name || "",
+            category: brand.niche || "",
+            tagline: brand.tagline || "",
+            website: brand.website || "",
+            phone: brand.phone || "",
+          });
+          setSocialLinks({
+            facebook: brand.social_handles?.facebook || "",
+            linkedin: brand.social_handles?.linkedin || "",
+            instagram: brand.social_handles?.instagram || "",
+            twitter: brand.social_handles?.twitter || "",
+          });
+          setColors({
+            primary: brand.colors?.primary || "",
+            secondary: brand.colors?.secondary || "",
+            accent: brand.colors?.accent || "",
+          });
+          setIsLocked(true);
+        }
+      } catch (err) {
+        console.error("Failed to load existing brand:", err);
+      } finally {
+        setLoadingExisting(false);
+      }
+    }
+    loadExistingBrand();
+  }, []);
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -186,16 +226,21 @@ export default function BrandSettings() {
 
     setSaving(true);
     try {
-      await saveBrandSettings({
+      const result = await saveBrandSettings({
         brandName: form.brandName,
         category: form.category,
-        tagline: form.tagline,
+        Niche: form.Niche,
         website: form.website,
         phone: form.phone,
         socialLinks,
         colors,
         logoFileName: logoFile?.name ?? "",
       });
+
+      if (logoFile && result.brandId) {
+        await uploadBrandLogo(result.brandId, logoFile);
+      }
+
       setIsLocked(true);
     } catch (err) {
       console.error("Failed to save brand settings:", err);
@@ -215,7 +260,9 @@ export default function BrandSettings() {
         <div className={`text-center flex flex-col gap-1 mb-8 ${enter()}`}>
           <h1 className="text-indigo-100 text-3xl font-semibold font-['K2D']">Brand Settings</h1>
           <p className="text-zinc-300 text-base font-['Poppins']">
-            Define your brand's core identity for consistent UPDO AI generation.
+            {loadingExisting
+              ? "Loading your brand..."
+              : "Define your brand's core identity for consistent UPDO AI generation."}
           </p>
         </div>
 
@@ -247,12 +294,12 @@ export default function BrandSettings() {
               </div>
 
               <FormField
-                label="Tagline"
-                name="tagline"
-                value={form.tagline}
+                label="Niche"
+                name="Niche"
+                value={form.Niche}
                 onChange={handleFieldChange}
                 disabled={isLocked}
-                placeholder="e.g. Posters, powered by AI"
+                placeholder="e.g. Hotels, Digital Marketing, Fitness"
               />
               <FormField
                 label="Website"
@@ -335,13 +382,15 @@ export default function BrandSettings() {
               ))}
             </section>
 
-            {/* Reset is intentionally NOT faded/disabled when locked — it's
-                the only way to undo the one-time confirm and start over. */}
+            {/* Reset is only available BEFORE confirmation — disabled once
+                the brand is locked in, since only one confirmation is
+                allowed per brand. */}
             <div className={`flex flex-col items-center gap-4 ${enter("delay-300")}`}>
               <button
                 type="button"
                 onClick={handleReset}
-                className="w-28 h-14 rounded-full outline outline-2 outline-offset-[-2px] outline-indigo-100 text-indigo-100 text-base font-extrabold font-['Poppins'] hover:bg-slate-800/50 transition-colors"
+                disabled={isLocked}
+                className="w-28 h-14 rounded-full outline outline-2 outline-offset-[-2px] outline-indigo-100 text-indigo-100 text-base font-extrabold font-['Poppins'] hover:bg-slate-800/50 transition-colors disabled:opacity-40 disabled:pointer-events-none disabled:hover:bg-transparent"
               >
                 Reset
               </button>

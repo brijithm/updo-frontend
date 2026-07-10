@@ -2,31 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
 import { hasBrandSettings } from "../services/brandService";
-
-// ---- TEMP MOCK DATA -------------------------------------------------------
-// Everything in this block is a stand-in for data that will come from the
-// backend after login. Swap these useState initial values for a useEffect +
-// fetch (or your auth context) once the API is ready — the JSX below doesn't
-// need to change.
-const CAMPAIGN_LIMIT = 7;
-
-const MOCK_RECENT_CAMPAIGNS = [
-  {
-    id: 1,
-    name: "Diwali Sale Blast",
-    platform: "Instagram",
-    date: "Jul 2, 2026",
-    status: "Published",
-  },
-  {
-    id: 2,
-    name: "Monsoon Collection Launch",
-    platform: "Facebook",
-    date: "Jul 4, 2026",
-    status: "Processing",
-  },
-];
-// ---------------------------------------------------------------------------
+import { getMyCampaigns, getUsageSummary } from "../services/campaignService";
 
 function StatusBadge({ status }) {
   const isPublished = status === "Published";
@@ -51,9 +27,30 @@ const cardClass =
 export default function Dashboard() {
   const navigate = useNavigate();
 
-  // Replace with real values from your auth/campaign API.
-  const [totalCampaigns] = useState(MOCK_RECENT_CAMPAIGNS.length);
-  const [recentCampaigns] = useState(MOCK_RECENT_CAMPAIGNS);
+  // Real data from the backend — replaces the old MOCK_RECENT_CAMPAIGNS block.
+  const [totalCampaigns, setTotalCampaigns] = useState(0);
+  const [campaignLimit, setCampaignLimit] = useState(7);
+  const [recentCampaigns, setRecentCampaigns] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadDashboardData() {
+      try {
+        const [campaigns, usage] = await Promise.all([
+          getMyCampaigns(),
+          getUsageSummary(),
+        ]);
+        setRecentCampaigns(campaigns.slice(0, 5)); // show most recent 5
+        setTotalCampaigns(usage.posts_remaining);
+        setCampaignLimit(usage.posts_max);
+      } catch (err) {
+        console.error("[Dashboard] Failed to load dashboard data:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadDashboardData();
+  }, []);
 
   // New Campaign is blocked in two cases:
   //  1. The user has never saved Brand Settings — UPDO AI needs a brand
@@ -63,7 +60,8 @@ export default function Dashboard() {
   useEffect(() => {
     hasBrandSettings().then(setBrandReady);
   }, []);
-  const limitReached = totalCampaigns >= CAMPAIGN_LIMIT;
+  // totalCampaigns now holds posts_remaining (counts DOWN, e.g. 7/7 -> 0/7)
+  const limitReached = totalCampaigns <= 0;
   const createBlocked = !brandReady || limitReached;
 
   // Simple entrance animation: fade + rise, staggered per section.
@@ -81,6 +79,33 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen w-full bg-slate-900">
+      <style>{`
+        /* Quick Actions card: slow, subtle pulsing glow to draw the eye
+           without being distracting. Kept scoped to this card only. */
+        @keyframes quickActionsGlow {
+          0%, 100% { box-shadow: 0 0 0 rgba(168, 85, 247, 0); }
+          50% { box-shadow: 0 0 24px rgba(168, 85, 247, 0.12); }
+        }
+        .quick-actions-card {
+          animation: quickActionsGlow 4s ease-in-out infinite;
+        }
+
+        /* Wand/sparkle icon: gentle wiggle + scale on button hover */
+        @keyframes wandWiggle {
+          0%, 100% { transform: rotate(0deg) scale(1); }
+          25% { transform: rotate(-12deg) scale(1.08); }
+          75% { transform: rotate(12deg) scale(1.08); }
+        }
+        .group:hover .wand-icon {
+          animation: wandWiggle 0.5s ease-in-out;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .quick-actions-card { animation: none; }
+          .group:hover .wand-icon { animation: none; }
+        }
+      `}</style>
+
       <Navbar />
 
       <main className="max-w-5xl mx-auto px-6 pt-16 pb-20 flex flex-col items-center gap-12">
@@ -107,7 +132,7 @@ export default function Dashboard() {
               </svg>
             </div>
             <div className="text-indigo-100 text-3xl font-semibold font-['K2D'] leading-10">
-              {totalCampaigns} / {CAMPAIGN_LIMIT}
+              {loading ? "..." : `${totalCampaigns} / ${campaignLimit}`}
             </div>
           </div>
 
@@ -137,7 +162,13 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {recentCampaigns.length === 0 ? (
+                  {loading ? (
+                    <tr>
+                      <td colSpan={4} className="py-6 text-center text-zinc-400 font-['K2D'] text-sm">
+                        Loading campaigns...
+                      </td>
+                    </tr>
+                  ) : recentCampaigns.length === 0 ? (
                     <tr>
                       <td colSpan={4} className="py-6 text-center text-zinc-400 font-['K2D'] text-sm">
                         No campaigns yet — create your first one to see it here.
@@ -163,7 +194,7 @@ export default function Dashboard() {
             </div>
 
             {/* Quick Actions */}
-            <div className={`flex flex-col gap-4 ${cardClass}`}>
+            <div className={`quick-actions-card flex flex-col gap-4 ${cardClass}`}>
               <span className="text-indigo-100 text-sm font-medium font-['K2D'] uppercase tracking-wide">
                 Quick Actions
               </span>
@@ -171,24 +202,33 @@ export default function Dashboard() {
               <button
                 onClick={() => navigate("/campaign")}
                 disabled={createBlocked}
-                className="group w-full h-14 bg-purple-300 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 hover:bg-purple-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none disabled:hover:scale-100"
+                className="group w-full h-14 bg-purple-300 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 hover:bg-purple-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-4px_rgba(196,165,255,0.5)] active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none disabled:hover:translate-y-0 disabled:hover:shadow-none"
               >
-                <svg width="18" height="18" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M18 6L17.05 3.95L15 3L17.05 2.05L18 0L18.95 2.05L21 3L18.95 3.95L18 6ZM6.5 6L5.55 3.95L3.5 3L5.55 2.05L6.5 0L7.45 2.05L9.5 3L7.45 3.95L6.5 6ZM18 17.5L17.05 15.45L15 14.5L17.05 13.55L18 11.5L18.95 13.55L21 14.5L18.95 15.45L18 17.5ZM3.1 20.7L0.3 17.9C0.1 17.7 0 17.4583 0 17.175C0 16.8917 0.1 16.65 0.3 16.45L11.45 5.3C11.65 5.1 11.8917 5 12.175 5C12.4583 5 12.7 5.1 12.9 5.3L15.7 8.1C15.9 8.3 16 8.54167 16 8.825C16 9.10833 15.9 9.35 15.7 9.55L4.55 20.7C4.35 20.9 4.10833 21 3.825 21C3.54167 21 3.3 20.9 3.1 20.7ZM3.85 18.6L11 11.4L9.6 10L2.4 17.15L3.85 18.6Z" fill="#3C0091" />
-                </svg>
+                <span className="wand-icon inline-flex transform origin-center">
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 21 21"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path d="M18 6L17.05 3.95L15 3L17.05 2.05L18 0L18.95 2.05L21 3L18.95 3.95L18 6ZM6.5 6L5.55 3.95L3.5 3L5.55 2.05L6.5 0L7.45 2.05L9.5 3L7.45 3.95L6.5 6ZM18 17.5L17.05 15.45L15 14.5L17.05 13.55L18 11.5L18.95 13.55L21 14.5L18.95 15.45L18 17.5ZM3.1 20.7L0.3 17.9C0.1 17.7 0 17.4583 0 17.175C0 16.8917 0.1 16.65 0.3 16.45L11.45 5.3C11.65 5.1 11.8917 5 12.175 5C12.4583 5 12.7 5.1 12.9 5.3L15.7 8.1C15.9 8.3 16 8.54167 16 8.825C16 9.10833 15.9 9.35 15.7 9.55L4.55 20.7C4.35 20.9 4.10833 21 3.825 21C3.54167 21 3.3 20.9 3.1 20.7ZM3.85 18.6L11 11.4L9.6 10L2.4 17.15L3.85 18.6Z" fill="#3C0091" />
+                  </svg>
+                </span>
                 <span className="text-violet-900 text-base font-bold font-['K2D']">
                   New Campaign
                 </span>
-                <svg
-                  width="7"
-                  height="11"
-                  viewBox="0 0 8 12"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="transition-transform duration-200 group-hover:translate-x-1"
-                >
-                  <path d="M4.6 6L0 1.4L1.4 0L7.4 6L1.4 12L0 10.6L4.6 6Z" fill="#3C0091" />
-                </svg>
+                <span className="inline-flex transform transition-transform duration-200 group-hover:translate-x-1">
+                  <svg
+                    width="7"
+                    height="11"
+                    viewBox="0 0 8 12"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path d="M4.6 6L0 1.4L1.4 0L7.4 6L1.4 12L0 10.6L4.6 6Z" fill="#3C0091" />
+                  </svg>
+                </span>
               </button>
 
               {!brandReady && (
@@ -201,7 +241,7 @@ export default function Dashboard() {
               )}
               {brandReady && limitReached && (
                 <p className="text-zinc-400 text-xs font-['K2D'] text-center -mt-2">
-                  You've used all {CAMPAIGN_LIMIT} campaign slots on your plan.
+                  You've used all {campaignLimit} campaign slots on your plan.
                 </p>
               )}
 

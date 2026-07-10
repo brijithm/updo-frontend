@@ -6,6 +6,7 @@ import LoginPage from "./components/LoginPage";
 import ForgotPassword from "./components/ForgotPassword";
 import VerificationCompleted from "./components/VerificationCompleted";
 import VerificationFailed from "./components/VerificationFailed";
+import CheckYourEmail from "./components/CheckYourEmail";
 import Dashboard from "./components/Dashboard";
 import Campaign from "./components/Campaign";
 import AllCampaigns from "./components/AllCampaigns";
@@ -46,6 +47,7 @@ function App() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/verification-completed" element={<VerificationCompleted />} />
       <Route path="/verification-failed" element={<VerificationFailed />} />
+      <Route path="/check-your-email" element={<CheckYourEmail />} />
 
       <Route
         path="/dashboard"

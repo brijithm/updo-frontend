@@ -1,6 +1,7 @@
 import React, { useState, useRef, useLayoutEffect, useEffect } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png";
+import { loginUser, registerUser } from "../services/authService";
 
 const MailIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -43,6 +44,10 @@ export default function LoginPage() {
   const [passwordValue, setPasswordValue] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // --- page-entrance animation (fade in + rise up on mount) ---
   const [mounted, setMounted] = useState(false);
@@ -78,7 +83,7 @@ export default function LoginPage() {
     setShowConfirmPassword(false);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (activeTab === "signup" && passwordValue !== confirmPassword) {
@@ -87,14 +92,21 @@ export default function LoginPage() {
     }
 
     setPasswordError("");
+    setAuthError("");
+    setIsSubmitting(true);
 
-    if (activeTab === "login") {
-      // TODO: replace with a real API call once the backend is connected
-      localStorage.setItem("updo_auth", "true");
-      navigate("/dashboard");
-    } else {
-      // TODO: your signup logic here (likely redirects to an email-verification step)
-      console.log("Signup submitted");
+    try {
+      if (activeTab === "login") {
+        await loginUser(email, passwordValue);
+        navigate("/dashboard");
+      } else {
+        await registerUser(email, passwordValue, fullName);
+        navigate("/check-your-email");
+      }
+    } catch (err) {
+      setAuthError(err.message || "Something went wrong. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -203,7 +215,14 @@ export default function LoginPage() {
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#958EA0]">
                     <MailIcon />
                   </span>
-                  <input type="email" placeholder="name@company.com" required className={inputBase} />
+                  <input
+                    type="email"
+                    placeholder="name@company.com"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className={inputBase}
+                  />
                 </div>
               </div>
 
@@ -232,6 +251,8 @@ export default function LoginPage() {
                           type={showPassword ? "text" : "password"}
                           placeholder="••••••••"
                           required
+                          value={passwordValue}
+                          onChange={(e) => setPasswordValue(e.target.value)}
                           className={inputBase}
                         />
                         <button
@@ -244,8 +265,20 @@ export default function LoginPage() {
                       </div>
                     </div>
                   ) : (
-                    /* Signup: new password + confirm password */
+                    /* Signup: full name + new password + confirm password */
                     <>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[#CBC3D7] text-sm font-medium font-poppins tracking-tight">Full Name</label>
+                        <input
+                          type="text"
+                          placeholder="Your Name"
+                          required
+                          value={fullName}
+                          onChange={(e) => setFullName(e.target.value)}
+                          className={inputBase.replace("pl-11", "pl-4")}
+                        />
+                      </div>
+
                       <div className="flex flex-col gap-1">
                         <label className="text-[#CBC3D7] text-sm font-medium font-poppins tracking-tight">New Password</label>
                         <div className="relative">
@@ -301,12 +334,16 @@ export default function LoginPage() {
               {passwordError && (
                 <p className="text-red-400 text-sm font-poppins -mt-2">{passwordError}</p>
               )}
+              {authError && (
+                <p className="text-red-400 text-sm font-poppins -mt-2">{authError}</p>
+              )}
 
               <button
                 type="submit"
-                className="w-full py-4 bg-[#D0BCFF] rounded-lg text-[#0B1326] text-base font-medium font-afacad tracking-tight shadow-lg hover:bg-[#CBC3D7] hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200"
+                disabled={isSubmitting}
+                className="w-full py-4 bg-[#D0BCFF] rounded-lg text-[#0B1326] text-base font-medium font-afacad tracking-tight shadow-lg hover:bg-[#CBC3D7] hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {activeTab === "login" ? "Confirm" : "Create Account"}
+                {isSubmitting ? "Please wait..." : activeTab === "login" ? "Confirm" : "Create Account"}
               </button>
             </form>
           </div>

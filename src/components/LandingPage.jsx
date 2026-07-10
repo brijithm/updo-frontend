@@ -57,8 +57,8 @@ export default function LandingPage() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => setReady(true), 200);
-    return () => clearTimeout(timer);
+    const raf = requestAnimationFrame(() => setReady(true));
+    return () => cancelAnimationFrame(raf);
   }, []);
   return (
     <div className={`w-full min-h-screen bg-[#000B2E] text-white overflow-hidden ${ready ? "start-anim" : ""}`}>

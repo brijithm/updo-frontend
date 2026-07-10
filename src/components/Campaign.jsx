@@ -14,31 +14,43 @@ import { generateCampaign } from "../services/campaignService";
 // hidden success/failed/limit_reached pages' Back buttons. `onLogout` is
 // only used by the hidden limit_reached page's Log out button.
 //
+// Beta scope: only Instagram + Square (1:1) are supported. Platform is
+// hardcoded (no picker) and Portrait/Landscape are locked "Coming Soon".
+//
 // Usage from the parent route:
 //   <Campaign onBack={() => navigate("/dashboard")} onLogout={handleLogout} />
 // ---------------------------------------------------------------------------
 
+const BETA_PLATFORM = "instagram";
+
 const ASPECT_RATIOS = [
-  { id: "square", label: "1:1", name: "Square", sub: "Feed posts" },
-  { id: "portrait", label: "9:16", name: "Portrait", sub: "Stories & Reels" },
-  { id: "landscape", label: "16:9", name: "Landscape", sub: "Video & Ads" },
+  { id: "square", label: "1:1", name: "Square", sub: "Feed posts", available: true },
+  { id: "portrait", label: "9:16", name: "Portrait", sub: "Stories & Reels", available: false },
+  { id: "landscape", label: "16:9", name: "Landscape", sub: "Video & Ads", available: false },
 ];
 
 function RatioButton({ ratio, selected, onSelect }) {
   const isSelected = selected === ratio.id;
+  const isDisabled = !ratio.available;
+
   return (
     <button
       type="button"
-      onClick={() => onSelect(ratio.id)}
-      className={`flex items-center gap-6 px-4 py-4 bg-slate-900 rounded-xl outline outline-offset-[-2px] transition-all duration-200 hover:-translate-y-0.5 ${
-        isSelected
-          ? "outline-2 outline-purple-300"
-          : "outline-1 outline-neutral-600 hover:outline-neutral-500"
+      onClick={() => ratio.available && onSelect(ratio.id)}
+      disabled={isDisabled}
+      className={`relative flex items-center gap-6 px-4 py-4 bg-slate-900 rounded-xl outline outline-offset-[-2px] transition-all duration-200 ${
+        isDisabled
+          ? "outline-1 outline-neutral-700 opacity-40 cursor-not-allowed"
+          : `hover:-translate-y-0.5 ${
+              isSelected
+                ? "outline-2 outline-purple-300"
+                : "outline-1 outline-neutral-600 hover:outline-neutral-500"
+            }`
       }`}
     >
       <div
         className={`flex items-center justify-center rounded-sm outline outline-1 outline-offset-[-1px] outline-neutral-600 ${
-          isSelected ? "bg-purple-300/20" : "bg-neutral-600/20"
+          isSelected && !isDisabled ? "bg-purple-300/20" : "bg-neutral-600/20"
         } ${
           ratio.id === "square"
             ? "w-11 h-12"
@@ -49,7 +61,7 @@ function RatioButton({ ratio, selected, onSelect }) {
       >
         <span
           className={`text-xs font-semibold font-['Inter'] tracking-wide leading-4 ${
-            isSelected ? "text-purple-300" : "text-white"
+            isSelected && !isDisabled ? "text-purple-300" : "text-white"
           }`}
         >
           {ratio.label}
@@ -63,6 +75,11 @@ function RatioButton({ ratio, selected, onSelect }) {
           {ratio.sub}
         </span>
       </div>
+      {isDisabled && (
+        <span className="absolute top-2 right-3 text-[10px] font-semibold font-['Poppins'] tracking-wide text-zinc-400 uppercase">
+          Coming Soon
+        </span>
+      )}
     </button>
   );
 }
@@ -117,7 +134,11 @@ export default function Campaign({ onBack, onLogout }) {
     setIsGenerating(true);
     setGenerateError(null);
     try {
-      const result = await generateCampaign({ aspectRatio, ...details });
+      const result = await generateCampaign({
+        aspectRatio,
+        platform: BETA_PLATFORM,
+        ...details,
+      });
 
       if (result?.status === "limit_reached") {
         setStep("limit_reached");
