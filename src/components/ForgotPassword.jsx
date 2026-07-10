@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import logo from "../assets/logo.png";
+import { forgotPassword } from "../services/authService";
 
 const MailIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -15,12 +16,22 @@ const inputBase =
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // TODO: your password reset logic here
-    console.log("Reset link requested for", email);
-    setSubmitted(true);
+    setError("");
+    setIsSubmitting(true);
+
+    try {
+      await forgotPassword(email);
+      setSubmitted(true);
+    } catch (err) {
+      setError(err.message || "Something went wrong. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -82,11 +93,16 @@ export default function ForgotPassword() {
                   </div>
                 </div>
 
+                {error && (
+                  <p className="text-red-400 text-sm font-poppins -mt-2">{error}</p>
+                )}
+
                 <button
                   type="submit"
-                  className="w-full py-4 bg-[#D0BCFF] rounded-lg text-[#0B1326] text-base font-medium font-afacad tracking-tight shadow-lg hover:bg-[#CBC3D7] transition-colors"
+                  disabled={isSubmitting}
+                  className="w-full py-4 bg-[#D0BCFF] rounded-lg text-[#0B1326] text-base font-medium font-afacad tracking-tight shadow-lg hover:bg-[#CBC3D7] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Confirm
+                  {isSubmitting ? "Please wait..." : "Confirm"}
                 </button>
 
                 <Link

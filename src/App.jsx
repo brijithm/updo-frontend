@@ -4,6 +4,7 @@ import LoadingPage from "./components/LoadingPage";
 import LandingPage from "./components/LandingPage";
 import LoginPage from "./components/LoginPage";
 import ForgotPassword from "./components/ForgotPassword";
+import ResetPassword from "./components/ResetPassword";
 import VerificationCompleted from "./components/VerificationCompleted";
 import VerificationFailed from "./components/VerificationFailed";
 import CheckYourEmail from "./components/CheckYourEmail";
@@ -45,6 +46,7 @@ function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/verification-completed" element={<VerificationCompleted />} />
       <Route path="/verification-failed" element={<VerificationFailed />} />
       <Route path="/check-your-email" element={<CheckYourEmail />} />

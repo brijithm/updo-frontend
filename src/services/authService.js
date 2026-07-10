@@ -54,3 +54,53 @@ export async function registerUser(email, password, fullName) {
 
   return data;
 }
+
+/**
+ * Sends a password reset link to the given email.
+ * Backend calls Supabase's reset_password_email(), which emails a link
+ * pointing to /reset-password with a recovery token in the URL.
+ * Returns { message, note } on success.
+ * Throws an Error with a user-facing message on failure.
+ */
+export async function forgotPassword(email) {
+  const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(data?.detail || "Failed to send reset link");
+  }
+
+  return data;
+}
+
+/**
+ * Sets a new password after the user clicks the reset link from their email.
+ * Requires the Supabase recovery access_token (pulled from the URL by
+ * ResetPassword.jsx) since the backend's /auth/reset-password route is
+ * protected by get_current_user.
+ * Returns { message, next_step } on success.
+ * Throws an Error with a user-facing message on failure.
+ */
+export async function resetPassword(newPassword, accessToken) {
+  const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ new_password: newPassword }),
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(data?.detail || "Failed to reset password");
+  }
+
+  return data;
+}
