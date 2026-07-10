@@ -12,7 +12,7 @@ const socials = [
   { icon: instagramIcon, label: "Instagram", href: "#" },
   { icon: xIcon, label: "X", href: "#" },
   { icon: facebookIcon, label: "Facebook", href: "#" },
-  { icon: whatsappIcon, label: "WhatsApp", href: "#" },
+ 
 ];
 
 function GlowBorder({ as: Tag = "div", radius = "9999px", size = 220, className = "", children, ...rest }) {
