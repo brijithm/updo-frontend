@@ -104,6 +104,13 @@ export default function NotFound() {
     return age >= GROW_MS ? POINT_R : POINT_R * (age / GROW_MS);
   };
 
+  // Same auth flag ProtectedRoute checks — logged-in users go to their
+  // dashboard, everyone else goes to the public landing page.
+  const goHome = () => {
+    const isLoggedIn = localStorage.getItem("updo_auth") === "true";
+    navigate(isLoggedIn ? "/dashboard" : "/");
+  };
+
   const { w, h } = dims;
   const fontSize = Math.min(w * 0.24, 260);
   const titleY = h * 0.42;
@@ -194,7 +201,7 @@ export default function NotFound() {
         style={{ top: `${subY + 48}px`, mixBlendMode: "screen", opacity: 0.8 }}
       >
         <button
-          onClick={() => navigate("/campaign")}
+          onClick={goHome}
           className="px-6 py-3 rounded-full border border-[#D0BCFF]/40 font-semibold tracking-wide text-sm"
           style={{ color: "#D0BCFF" }}
         >
