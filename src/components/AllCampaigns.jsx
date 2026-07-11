@@ -2,25 +2,19 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
 import { hasBrandSettings } from "../services/brandService";
-
-// ---- TEMP MOCK DATA -------------------------------------------------------
-// Same shape as Dashboard.jsx's MOCK_RECENT_CAMPAIGNS — swap for a real
-// fetch to your campaigns endpoint once it's ready. This page just shows
-// the full list where Dashboard only shows the most recent couple.
-const CAMPAIGN_LIMIT = 7;
-
-const MOCK_ALL_CAMPAIGNS = [
-  { id: 1, name: "Diwali Sale Blast", platform: "Instagram", date: "Jul 2, 2026", status: "Published" },
-  { id: 2, name: "Monsoon Collection Launch", platform: "Facebook", date: "Jul 4, 2026", status: "Processing" },
-];
-// ---------------------------------------------------------------------------
+import { getMyCampaigns, getUsageSummary } from "../services/campaignService";
 
 function StatusBadge({ status }) {
   const isPublished = status === "Published";
+  const isFailed = status === "Failed";
   return (
     <span
       className={`px-3 py-1 rounded-full text-xs font-semibold font-['K2D'] ${
-        isPublished ? "bg-purple-500 text-white" : "bg-slate-700 text-zinc-300 animate-pulse"
+        isPublished
+          ? "bg-purple-500 text-white"
+          : isFailed
+          ? "bg-red-500/80 text-white"
+          : "bg-slate-700 text-zinc-300 animate-pulse"
       }`}
     >
       {status}
@@ -34,16 +28,60 @@ const cardClass =
 export default function AllCampaigns() {
   const navigate = useNavigate();
 
-  const [campaigns] = useState(MOCK_ALL_CAMPAIGNS);
-  const totalCampaigns = campaigns.length;
+  const [campaigns, setCampaigns] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Same creation-gating rule as Dashboard: need brand settings saved once,
-  // and need a free slot under the plan limit.
+  // Usage summary drives the "X / Y campaigns used" line and the create-limit
+  // gating. Falls back to counting fetched campaigns if the endpoint fails.
+  const [postsUsed, setPostsUsed] = useState(0);
+  const [postsMax, setPostsMax] = useState(null);
+
   const [brandReady, setBrandReady] = useState(true);
   useEffect(() => {
-    hasBrandSettings().then(setBrandReady);
+    hasBrandSettings().then(setBrandReady).catch(() => setBrandReady(true));
   }, []);
-  const limitReached = totalCampaigns >= CAMPAIGN_LIMIT;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const [campaignList, usage] = await Promise.allSettled([
+          getMyCampaigns(),
+          getUsageSummary(),
+        ]);
+
+        if (cancelled) return;
+
+        if (campaignList.status === "fulfilled") {
+          setCampaigns(campaignList.value);
+        } else {
+          setError(campaignList.reason?.message || "Failed to load campaigns");
+        }
+
+        if (usage.status === "fulfilled") {
+          setPostsUsed(usage.value.posts_used ?? 0);
+          setPostsMax(usage.value.posts_max ?? null);
+        } else if (campaignList.status === "fulfilled") {
+          // Usage summary failed but we still have campaigns — fall back to
+          // treating the campaign count as "used" with no known max.
+          setPostsUsed(campaignList.value.length);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const limitReached = postsMax != null && postsUsed >= postsMax;
   const createBlocked = !brandReady || limitReached;
 
   const [mounted, setMounted] = useState(false);
@@ -64,7 +102,7 @@ export default function AllCampaigns() {
             All Campaigns
           </h1>
           <p className="text-zinc-300 text-base font-normal font-['K2D'] leading-6">
-            {totalCampaigns} / {CAMPAIGN_LIMIT} campaigns used
+            {postsMax != null ? `${postsUsed} / ${postsMax} campaigns used` : `${postsUsed} campaigns used`}
           </p>
         </div>
 
@@ -79,7 +117,19 @@ export default function AllCampaigns() {
               </tr>
             </thead>
             <tbody>
-              {campaigns.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={4} className="py-6 text-center text-zinc-400 font-['K2D'] text-sm">
+                    Loading campaigns…
+                  </td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan={4} className="py-6 text-center text-red-400 font-['K2D'] text-sm">
+                    {error}
+                  </td>
+                </tr>
+              ) : campaigns.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="py-6 text-center text-zinc-400 font-['K2D'] text-sm">
                     No campaigns yet — create your first one.
@@ -145,7 +195,7 @@ export default function AllCampaigns() {
           )}
           {brandReady && limitReached && (
             <p className="text-zinc-400 text-xs font-['K2D']">
-              You've used all {CAMPAIGN_LIMIT} campaign slots on your plan.
+              You've used all {postsMax} campaign slots on your plan.
             </p>
           )}
         </div>
