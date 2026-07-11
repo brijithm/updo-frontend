@@ -21,7 +21,7 @@ function LoadingPage({ onComplete }) {
         autoPlay
         muted
         playsInline
-        className="max-w-full max-h-full object-contain"
+        className="w-full h-full object-cover"
       >
         <source src={loadingVideo} type="video/mp4" />
         Your browser does not support the video tag.
