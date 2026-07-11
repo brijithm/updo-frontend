@@ -37,9 +37,26 @@ export default function AllCampaigns() {
   const [postsUsed, setPostsUsed] = useState(0);
   const [postsMax, setPostsMax] = useState(null);
 
-  const [brandReady, setBrandReady] = useState(true);
+  // Default to false (blocked) until we've confirmed brand settings exist —
+  // never optimistically allow Create before the check resolves, and never
+  // fall back to "allowed" if the check errors out.
+  const [brandReady, setBrandReady] = useState(false);
+  const [brandCheckLoading, setBrandCheckLoading] = useState(true);
   useEffect(() => {
-    hasBrandSettings().then(setBrandReady).catch(() => setBrandReady(true));
+    let cancelled = false;
+    hasBrandSettings()
+      .then((ready) => {
+        if (!cancelled) setBrandReady(ready);
+      })
+      .catch(() => {
+        if (!cancelled) setBrandReady(false);
+      })
+      .finally(() => {
+        if (!cancelled) setBrandCheckLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -82,7 +99,7 @@ export default function AllCampaigns() {
   }, []);
 
   const limitReached = postsMax != null && postsUsed >= postsMax;
-  const createBlocked = !brandReady || limitReached;
+  const createBlocked = brandCheckLoading || !brandReady || limitReached;
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -171,7 +188,9 @@ export default function AllCampaigns() {
               disabled={createBlocked}
               className="group flex items-center gap-3 px-6 h-14 bg-purple-300 rounded-full shadow-[0px_10px_15px_-3px_rgba(208,188,255,0.20)] hover:bg-purple-200 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 disabled:opacity-40 disabled:pointer-events-none disabled:hover:scale-100"
             >
-              <span className="text-violet-900 text-base font-normal font-['Poppins']">Create</span>
+              <span className="text-violet-900 text-base font-normal font-['Poppins']">
+                {brandCheckLoading ? "Checking..." : "Create"}
+              </span>
               <svg
                 width="16"
                 height="16"
@@ -185,7 +204,7 @@ export default function AllCampaigns() {
             </button>
           </div>
 
-          {!brandReady && (
+          {!brandCheckLoading && !brandReady && (
             <button
               onClick={() => navigate("/brand-settings")}
               className="text-zinc-400 text-xs font-['K2D'] hover:text-purple-300 transition-colors"

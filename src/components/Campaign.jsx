@@ -5,6 +5,7 @@ import CampaignSuccess from "./CampaignSuccess";
 import CampaignFailed from "./CampaignFailed";
 import BetaLimitReached from "./BetaLimitReached";
 import { generateCampaign } from "../services/campaignService";
+import { hasBrandSettings } from "../services/brandService";
 
 // ---------------------------------------------------------------------------
 // Full Campaign Creator wizard. Lives on ONE route. Steps are just internal
@@ -125,12 +126,40 @@ export default function Campaign({ onBack, onLogout }) {
   const [generateError, setGenerateError] = useState(null);
   const [campaignResult, setCampaignResult] = useState(null); // { campaignId, imageUrl, status }
 
+  // Brand settings gate: default to NOT ready (blocked) until the backend
+  // confirms the user has brand settings saved. Never optimistically allow
+  // Generate before this resolves, and never fall back to "allowed" if the
+  // check itself errors out — that would let ungated requests hit the
+  // backend, which will 400/403 anyway but with a worse UX.
+  const [brandReady, setBrandReady] = useState(false);
+  const [brandCheckLoading, setBrandCheckLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    hasBrandSettings()
+      .then((ready) => {
+        if (!cancelled) setBrandReady(ready);
+      })
+      .catch(() => {
+        if (!cancelled) setBrandReady(false);
+      })
+      .finally(() => {
+        if (!cancelled) setBrandCheckLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleDetailChange = (e) => {
     const { name, value } = e.target;
     setDetails((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleGenerate = async () => {
+    // Belt-and-suspenders: even though the button is disabled while brand
+    // settings aren't ready, guard here too in case of a stale click.
+    if (!brandReady) return;
+
     setIsGenerating(true);
     setGenerateError(null);
     try {
@@ -208,6 +237,8 @@ export default function Campaign({ onBack, onLogout }) {
     return <CampaignSuccess campaignId={campaignResult?.campaignId} onBack={onBack} />;
   }
 
+  const generateDisabled = isGenerating || brandCheckLoading || !brandReady;
+
   return (
     <div className="min-h-screen w-full bg-slate-900">
       <Navbar />
@@ -273,6 +304,12 @@ export default function Campaign({ onBack, onLogout }) {
           </p>
         )}
 
+        {!brandCheckLoading && !brandReady && (
+          <p className="text-center text-zinc-400 text-sm font-['Poppins']">
+            Set up Brand Settings first to unlock campaign generation.
+          </p>
+        )}
+
         {/* Navigation footer */}
         <div className={`flex justify-between items-center ${enter("delay-200")}`}>
           <button
@@ -290,11 +327,11 @@ export default function Campaign({ onBack, onLogout }) {
           <button
             type="button"
             onClick={handleGenerate}
-            disabled={isGenerating}
-            className="group flex items-center gap-3 px-6 h-14 bg-purple-300 rounded-full shadow-[0px_10px_15px_-3px_rgba(208,188,255,0.20)] hover:bg-purple-200 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 disabled:opacity-60 disabled:hover:scale-100"
+            disabled={generateDisabled}
+            className="group flex items-center gap-3 px-6 h-14 bg-purple-300 rounded-full shadow-[0px_10px_15px_-3px_rgba(208,188,255,0.20)] hover:bg-purple-200 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 disabled:opacity-60 disabled:hover:scale-100 disabled:pointer-events-none"
           >
             <span className="text-violet-900 text-base font-normal font-['Poppins']">
-              {isGenerating ? "Generating..." : "Generate"}
+              {isGenerating ? "Generating..." : brandCheckLoading ? "Checking..." : "Generate"}
             </span>
             {!isGenerating && (
               <svg
