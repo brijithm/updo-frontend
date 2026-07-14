@@ -12,10 +12,9 @@ const socials = [
   { icon: instagramIcon, label: "Instagram", href: "#" },
   { icon: xIcon, label: "X", href: "#" },
   { icon: facebookIcon, label: "Facebook", href: "#" },
- 
 ];
 
-function GlowBorder({ as: Tag = "div", radius = "9999px", size = 220, className = "", children, ...rest }) {
+function GlowBorder({ as: Tag = "div", radius = "9999px", size = 220, lift = true, className = "", children, ...rest }) {
   const ref = useRef(null);
   const [pos, setPos] = useState({ x: 50, y: 50 });
   const [active, setActive] = useState(false);
@@ -31,10 +30,24 @@ function GlowBorder({ as: Tag = "div", radius = "9999px", size = 220, className 
       onMouseMove={handleMove}
       onMouseEnter={() => setActive(true)}
       onMouseLeave={() => setActive(false)}
-      className={"relative transition-transform duration-300 ease-out hover:-translate-y-0.5 " + className}
+      className={`relative transition-transform duration-300 ease-out ${lift ? "hover:-translate-y-0.5" : ""} ${className}`}
       style={{ borderRadius: radius }}
       {...rest}
     >
+      {/* Always-on spinning gradient ring */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 spin-glow transition-opacity duration-500 ease-out"
+        style={{
+          borderRadius: radius,
+          opacity: active ? 0 : 0.9,
+          padding: 1.5,
+          WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+          WebkitMaskComposite: "xor",
+          maskComposite: "exclude",
+        }}
+      />
+      {/* Hover-tracked cursor glow */}
       <span
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 transition-opacity duration-500 ease-out"
@@ -50,6 +63,253 @@ function GlowBorder({ as: Tag = "div", radius = "9999px", size = 220, className 
       />
       {children}
     </Tag>
+  );
+}
+
+function Stars({ value, onChange, size = "text-base" }) {
+  const items = [1, 2, 3, 4, 5];
+  return (
+    <div className={`flex items-center gap-0.5 ${size}`}>
+      {items.map((n) => (
+        <span
+          key={n}
+          onClick={onChange ? () => onChange(n) : undefined}
+          className={`${onChange ? "cursor-pointer" : ""} ${n <= value ? "text-[#FFD166]" : "text-white/20"} transition-colors duration-150`}
+        >
+          ★
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function PenIcon({ className = "w-4 h-4" }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M4 20l1.2-4.2a2 2 0 01.53-.92L16.6 4a2 2 0 012.83 0l.57.57a2 2 0 010 2.83L9.14 18.27a2 2 0 01-.92.53L4 20z"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+        fill="currentColor"
+        fillOpacity="0.06"
+      />
+      <path d="M14.5 6.1l3.4 3.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M4 20l1.4-3.9 2.5 2.5L4 20z" fill="currentColor" />
+    </svg>
+  );
+}
+
+const SEED_REVIEWS = [
+  { id: "r1", name: "Ananya R.", business: "Bakery Owner", rating: 5, text: "UPDO cut our poster creation time from hours to minutes. The AI understands our brand better than some designers we've hired in the past." },
+  { id: "r2", name: "Karthik S.", business: "Gym Studio", rating: 4, text: "Great tool for quick social posts. Would love a bit more layout variety but overall very happy with the output quality." },
+  { id: "r3", name: "Priya M.", business: "Boutique Owner", rating: 5, text: "The scheduling planner alone saves me so much stress every week. Highly recommend for small business owners juggling everything solo." },
+  { id: "r4", name: "Rahul V.", business: "Cafe Owner", rating: 5, text: "Posters look like they came from a proper design agency. My Instagram engagement has genuinely improved since switching over." },
+  { id: "r5", name: "Divya K.", business: "Salon Owner", rating: 4, text: "Simple to use, no design skills needed like they promise. The captions feature is a nice bonus I wasn't expecting." },
+  { id: "r6", name: "Sanjay P.", business: "Fitness Coach", rating: 5, text: "Switched from generic templates to UPDO and never looked back. Faster, smarter, and far more on-brand every single time." },
+];
+
+function ReviewCarousel() {
+  const [reviews, setReviews] = useState(SEED_REVIEWS);
+  const [isHovering, setIsHovering] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
+  const [formRating, setFormRating] = useState(5);
+  const [formName, setFormName] = useState("");
+  const [formText, setFormText] = useState("");
+  const [justSubmitted, setJustSubmitted] = useState(false);
+  const [expandedReview, setExpandedReview] = useState(null);
+
+  const isPaused = isHovering || formOpen || expandedReview !== null;
+  const track = [...reviews, ...reviews];
+
+  const trackRef = useRef(null);
+  const posRef = useRef(0);
+  const pausedRef = useRef(false);
+
+  useEffect(() => {
+    pausedRef.current = isPaused;
+  }, [isPaused]);
+
+  useEffect(() => {
+    let frameId;
+    let lastTime = null;
+    const speed = 45; // px per second
+
+    function tick(now) {
+      if (lastTime === null) lastTime = now;
+      const dt = (now - lastTime) / 1000;
+      lastTime = now;
+
+      if (!pausedRef.current && trackRef.current) {
+        posRef.current += speed * dt;
+        const halfWidth = trackRef.current.scrollWidth / 2;
+        if (halfWidth > 0 && posRef.current >= halfWidth) {
+          posRef.current -= halfWidth;
+        }
+        trackRef.current.style.transform = `translateX(-${posRef.current}px)`;
+      }
+      frameId = requestAnimationFrame(tick);
+    }
+
+    frameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameId);
+  }, []);
+
+  function handleSubmitReview(e) {
+    e.preventDefault();
+    if (!formText.trim()) return;
+    const newReview = {
+      id: `local-${Date.now()}`,
+      name: formName.trim() || "Anonymous",
+      business: "New review",
+      rating: formRating,
+      text: formText.trim(),
+    };
+    setReviews((prev) => [newReview, ...prev]);
+    setFormName("");
+    setFormText("");
+    setFormRating(5);
+    setFormOpen(false);
+    setJustSubmitted(true);
+    setTimeout(() => setJustSubmitted(false), 3000);
+  }
+
+  useEffect(() => {
+    if (!expandedReview) return;
+    function onKey(e) {
+      if (e.key === "Escape") setExpandedReview(null);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [expandedReview]);
+
+  return (
+    <div
+      className="relative w-full overflow-x-hidden overflow-y-visible"
+      style={{
+        WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)",
+        maskImage: "linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)",
+      }}
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
+    >
+      <div ref={trackRef} className="flex items-center py-2" style={{ willChange: "transform" }}>
+        {track.map((review, i) => {
+          const key = `${review.id}-${i}`;
+          return (
+            <div
+              key={key}
+              className="review-capsule flex-shrink-0 mr-5 w-[260px] sm:w-[300px] rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm px-5 py-4 transition-colors duration-300 ease-out hover:border-white/20 hover:bg-white/[0.07]"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-afacad text-sm sm:text-base text-white">{review.name}</p>
+                  <p className="font-afacad text-xs text-white/50">{review.business}</p>
+                </div>
+                <Stars value={review.rating} size="text-xs sm:text-sm" />
+              </div>
+
+              <div className="mt-3">
+                <p className="font-afacad text-xs sm:text-sm text-white/70 leading-relaxed clamp-3 break-all">{review.text}</p>
+              </div>
+
+              <button
+                onClick={() => setExpandedReview(review)}
+                className="mt-3 inline-flex items-center gap-1 rounded-full bg-[rgba(102,51,153,0.35)] hover:bg-[rgba(102,51,153,0.55)] px-3 py-1 text-[11px] sm:text-xs text-white/90 transition-colors duration-200"
+              >
+                Read full ⤢
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 z-50 flex items-center">
+        <div
+          className={`relative transition-all duration-500 ease-out border border-white/15 shadow-2xl rounded-3xl flex items-center justify-center ${
+            formOpen ? "w-[300px] sm:w-[380px] py-6 px-5 sm:px-6 bg-[#0F1233]" : "px-6 py-3 bg-[#0F1233]/90 backdrop-blur-md"
+          }`}
+        >
+          {formOpen && (
+            <button
+              onClick={() => setFormOpen(false)}
+              aria-label="Close"
+              className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors duration-200"
+            >
+              ✕
+            </button>
+          )}
+
+          {formOpen ? (
+            <form onSubmit={handleSubmitReview} className="w-full flex flex-col gap-3 pr-2">
+              <p className="font-afacad text-sm sm:text-base text-white">Your Review</p>
+              <Stars value={formRating} onChange={setFormRating} size="text-lg" />
+              <input
+                type="text"
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+                placeholder="Your name (optional)"
+                className="font-afacad w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/30"
+              />
+              <textarea
+                value={formText}
+                onChange={(e) => setFormText(e.target.value)}
+                placeholder="Tell us what you think…"
+                rows={3}
+                className="font-afacad w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/30 resize-none break-all"
+              />
+              <button
+                type="submit"
+                className="font-afacad w-full rounded-xl bg-[rgba(102,51,153,0.8)] hover:bg-[rgba(102,51,153,0.95)] py-2 text-sm text-white transition-colors duration-200"
+              >
+                Post Review
+              </button>
+            </form>
+          ) : justSubmitted ? (
+            <p className="font-afacad text-base sm:text-lg text-white">Thanks for your review ✓</p>
+          ) : (
+            <button onClick={() => setFormOpen(true)} className="font-afacad flex items-center gap-2 text-base sm:text-lg text-white">
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/85">
+                <PenIcon className="w-3.5 h-3.5 text-[#1a1a2e]" />
+              </span>
+              Tap to Review
+            </button>
+          )}
+        </div>
+      </div>
+
+      {expandedReview && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 modal-fade"
+          onClick={() => setExpandedReview(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-xl rounded-3xl border border-white/15 bg-[#0F1233] shadow-2xl px-7 py-8 sm:px-10 sm:py-10 modal-pop"
+          >
+            <button
+              onClick={() => setExpandedReview(null)}
+              aria-label="Close"
+              className="absolute top-5 right-5 w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors duration-200"
+            >
+              ✕
+            </button>
+
+            <div className="flex items-start justify-between gap-3 pr-12">
+              <div>
+                <p className="font-afacad text-lg sm:text-xl text-white">{expandedReview.name}</p>
+                <p className="font-afacad text-sm text-white/50">{expandedReview.business}</p>
+              </div>
+              <Stars value={expandedReview.rating} size="text-base sm:text-lg" />
+            </div>
+
+            <p className="font-afacad mt-6 text-base sm:text-lg text-white/80 leading-relaxed break-all max-h-[55vh] overflow-y-auto overflow-x-hidden pr-1 no-scrollbar">
+              {expandedReview.text}
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -90,8 +350,51 @@ export default function LandingPage() {
         .fade-up-4 { animation-delay: 0.42s; }
         .fade-up-5 { animation-delay: 0.54s; }
 
+        .clamp-3 {
+          display: -webkit-box;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+
+        .no-scrollbar {
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+          width: 0;
+          height: 0;
+        }
+
+        @property --border-angle {
+          syntax: '<angle>';
+          inherits: false;
+          initial-value: 0deg;
+        }
+        .spin-glow {
+          background: conic-gradient(from var(--border-angle), rgba(255,255,255,0.05), rgba(200,160,255,0.95) 10%, rgba(102,51,153,0.5) 24%, rgba(255,255,255,0.05) 40%, rgba(255,255,255,0.05) 100%);
+          animation: spinBorderAngle 6s linear infinite;
+        }
+        @keyframes spinBorderAngle {
+          to { --border-angle: 360deg; }
+        }
+
+        @keyframes modalFadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .modal-fade { animation: modalFadeIn 0.25s ease-out both; }
+
+        @keyframes modalPopIn {
+          from { opacity: 0; transform: scale(0.94) translateY(8px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .modal-pop { animation: modalPopIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
         @media (prefers-reduced-motion: reduce) {
           .fade-up { animation: none; opacity: 1; }
+          .modal-fade, .modal-pop { animation: none; }
         }
       `}</style>
 
@@ -124,9 +427,15 @@ export default function LandingPage() {
       </section>
 
       <section className="fade-up fade-up-4 px-6 sm:px-10 pb-24">
-        <GlowBorder size={420} className="mx-auto max-w-[1338px] py-16 sm:py-20 flex flex-col items-center justify-center gap-3 border border-white/10 bg-gradient-to-r from-[rgba(15,24,51,0.35)] to-[rgba(10,19,48,0.35)]">
-          <p className="font-afacad text-xl sm:text-2xl text-white">Write Your Review Here…</p>
-          <p className="font-afacad text-base sm:text-lg text-white/70">It Helps Us to Improve</p>
+        <GlowBorder
+          size={420}
+          lift={false}
+          className="mx-auto max-w-[1338px] py-14 sm:py-16 border border-white/10 bg-gradient-to-r from-[rgba(15,24,51,0.35)] to-[rgba(10,19,48,0.35)]"
+        >
+          <div className="px-4 sm:px-8">
+            <p className="font-afacad text-center text-lg sm:text-xl text-white/70 mb-6">Loved by small businesses like yours</p>
+            <ReviewCarousel />
+          </div>
         </GlowBorder>
       </section>
 
