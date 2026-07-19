@@ -14,6 +14,9 @@ import AllCampaigns from "./components/AllCampaigns";
 import BrandSettings from "./components/BrandSettings";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./components/NotFound";
+import PrivacyPolicy from "./components/PrivacyPolicy";
+import TermsAndConditions from "./components/TermsAndConditions";
+import RefundPolicy from "./components/RefundPolicy";
 
 // Thin wrapper so the /campaign route has somewhere to send onBack.
 // Campaign.jsx now owns its own internal steps (form -> preview -> success)
@@ -50,6 +53,9 @@ function App() {
       <Route path="/verification-completed" element={<VerificationCompleted />} />
       <Route path="/verification-failed" element={<VerificationFailed />} />
       <Route path="/check-your-email" element={<CheckYourEmail />} />
+      <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+      <Route path="/terms" element={<TermsAndConditions />} />
+      <Route path="/refund-policy" element={<RefundPolicy />} />
 
       <Route
         path="/dashboard"

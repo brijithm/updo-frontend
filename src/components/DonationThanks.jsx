@@ -1,11 +1,5 @@
 import { useEffect, useState } from "react";
 
-// ---------------------------------------------------------------------------
-// Hidden "Thanks For Your Support" page. Shown full-screen right after a
-// successful donation on the Preview page. Not in Navbar, no manual nav —
-// auto-redirects to Dashboard after AUTO_REDIRECT_MS via onDone().
-// ---------------------------------------------------------------------------
-
 const AUTO_REDIRECT_MS = 3000;
 
 export default function DonationThanks({ onDone }) {

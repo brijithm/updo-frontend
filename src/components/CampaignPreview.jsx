@@ -32,7 +32,7 @@ export default function CampaignPreview({ campaignResult, onRedo, onConfirmed, o
     setIsDonating(true);
     setDonationFailed(false);
     try {
-      await openDonationCheckout(10000, {
+      await openDonationCheckout(100, {
         onSuccess: () => setShowDonationThanks(true),
         onFailure: () => setDonationFailed(true),
       });

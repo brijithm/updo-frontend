@@ -210,7 +210,7 @@ function ReviewCarousel() {
               </div>
 
               <div className="mt-3">
-                <p className="font-afacad text-xs sm:text-sm text-white/70 leading-relaxed clamp-3 break-all">{review.text}</p>
+                <p className="font-afacad text-xs sm:text-sm text-white/70 leading-relaxed clamp-3">{review.text}</p>
               </div>
 
               <button
@@ -256,7 +256,7 @@ function ReviewCarousel() {
                 onChange={(e) => setFormText(e.target.value)}
                 placeholder="Tell us what you think…"
                 rows={3}
-                className="font-afacad w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/30 resize-none break-all"
+                className="font-afacad w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/30 resize-none"
               />
               <button
                 type="submit"
@@ -303,7 +303,7 @@ function ReviewCarousel() {
               <Stars value={expandedReview.rating} size="text-base sm:text-lg" />
             </div>
 
-            <p className="font-afacad mt-6 text-base sm:text-lg text-white/80 leading-relaxed break-all max-h-[55vh] overflow-y-auto overflow-x-hidden pr-1 no-scrollbar">
+            <p className="font-afacad mt-6 text-base sm:text-lg text-white/80 leading-relaxed max-h-[55vh] overflow-y-auto pr-1">
               {expandedReview.text}
             </p>
           </div>
@@ -355,16 +355,6 @@ export default function LandingPage() {
           -webkit-line-clamp: 3;
           -webkit-box-orient: vertical;
           overflow: hidden;
-        }
-
-        .no-scrollbar {
-          scrollbar-width: none;
-          -ms-overflow-style: none;
-        }
-        .no-scrollbar::-webkit-scrollbar {
-          display: none;
-          width: 0;
-          height: 0;
         }
 
         @property --border-angle {
@@ -452,10 +442,9 @@ export default function LandingPage() {
           </div>
 
           <p className="font-afacad text-sm sm:text-base text-white/50 text-center">
-            <a href="#privacy" className="hover:text-white/70 transition-colors duration-300">Privacy Policy</a>
+            <Link to="/privacy-policy" className="hover:text-white/70 transition-colors duration-300">Privacy Policy</Link>
             {" "}|{" "}
-            <a href="#terms" className="hover:text-white/70 transition-colors duration-300">Terms &amp; Conditions</a>
-            {" "}Applied
+            <Link to="/terms" className="hover:text-white/70 transition-colors duration-300">Terms &amp; Conditions</Link>
           </p>
         </div>
       </footer>
