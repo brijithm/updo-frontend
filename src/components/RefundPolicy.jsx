@@ -2,7 +2,7 @@ import LegalLayout, { Section } from "./LegalLayout";
 
 export default function RefundPolicy() {
   return (
-    <LegalLayout title="Refund & Cancellation Policy" updated="[Insert Date]">
+    <LegalLayout title="Refund & Cancellation Policy" updated="July 15, 2026">
       <p>
         This policy explains how subscription cancellations and refunds work for UPDO AI. By
         subscribing to UPDO AI, you agree to the terms below.

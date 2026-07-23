@@ -2,7 +2,7 @@ import LegalLayout, { Section } from "./LegalLayout";
 
 export default function PrivacyPolicy() {
   return (
-    <LegalLayout title="Privacy Policy" updated="[Insert Date]">
+    <LegalLayout title="Privacy Policy" updated="July 15, 2026">
       <p>
         UPDO AI ("we", "us", "our") operates updoai.in and the UPDO AI platform (the
         "Service"), which helps users plan, generate, and manage AI-powered social media

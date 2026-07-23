@@ -17,6 +17,7 @@ import NotFound from "./components/NotFound";
 import PrivacyPolicy from "./components/PrivacyPolicy";
 import TermsAndConditions from "./components/TermsAndConditions";
 import RefundPolicy from "./components/RefundPolicy";
+import Scheduler from "./components/Scheduler";
 
 // Thin wrapper so the /campaign route has somewhere to send onBack.
 // Campaign.jsx now owns its own internal steps (form -> preview -> success)
@@ -56,6 +57,7 @@ function App() {
       <Route path="/privacy-policy" element={<PrivacyPolicy />} />
       <Route path="/terms" element={<TermsAndConditions />} />
       <Route path="/refund-policy" element={<RefundPolicy />} />
+      <Route path="/scheduler" element={<Scheduler />} />
 
       <Route
         path="/dashboard"

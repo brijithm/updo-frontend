@@ -8,10 +8,10 @@ import whatsappIcon from "../assets/WhatsApp.svg";
 import { Link } from "react-router-dom";
 
 const socials = [
-  { icon: linkedinIcon, label: "LinkedIn", href: "#" },
-  { icon: instagramIcon, label: "Instagram", href: "#" },
-  { icon: xIcon, label: "X", href: "#" },
-  { icon: facebookIcon, label: "Facebook", href: "#" },
+  { icon: linkedinIcon, label: "LinkedIn", href: "https://www.linkedin.com/company/ai-updo/about/?viewAsMember=true" },
+  { icon: instagramIcon, label: "Instagram", href: "https://www.instagram.com/updo.ai/" },
+  { icon: xIcon, label: "X", href: "https://x.com/updo_ai" },
+  { icon: facebookIcon, label: "Facebook", href: "https://www.facebook.com/share/1Kq2SPAV4Z/" },
 ];
 
 function GlowBorder({ as: Tag = "div", radius = "9999px", size = 220, lift = true, className = "", children, ...rest }) {

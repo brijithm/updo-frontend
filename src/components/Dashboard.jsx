@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
 import { hasBrandSettings } from "../services/brandService";
 import { getMyCampaigns, getUsageSummary } from "../services/campaignService";
+import { openDonationCheckout } from "../services/donationService";
 
 function StatusBadge({ status }) {
   const isPublished = status === "Published";
@@ -72,6 +73,36 @@ export default function Dashboard() {
     return () => cancelAnimationFrame(id);
   }, []);
 
+  // Signed-in user's email, set by authService.js on login.
+  const userEmail = localStorage.getItem("updo_user_email");
+
+  // Donation modal (Razorpay flow, wired via donationService.js).
+  const [donationOpen, setDonationOpen] = useState(false);
+  const [donationAmount, setDonationAmount] = useState(100);
+  const [donationLoading, setDonationLoading] = useState(false);
+
+  useEffect(() => {
+    if (document.getElementById("razorpay-checkout-js")) return;
+    const script = document.createElement("script");
+    script.id = "razorpay-checkout-js";
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    document.body.appendChild(script);
+  }, []);
+
+  async function handleDonate() {
+    setDonationLoading(true);
+    try {
+      await openDonationCheckout(donationAmount, {
+        onSuccess: () => navigate("/donation-thanks"),
+        onFailure: () => setDonationLoading(false),
+      });
+    } finally {
+      setDonationLoading(false);
+      setDonationOpen(false);
+    }
+  }
+
   const enter = (delay = "") =>
     `transition-all duration-700 ease-out ${delay} ${
       mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
@@ -117,6 +148,14 @@ export default function Dashboard() {
           <p className="text-zinc-300 text-base font-normal font-['K2D'] leading-6">
             Welcome back. Your AI-automated campaigns are running at peak efficiency.
           </p>
+          {userEmail && (
+            <div className="mt-1 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/60 outline outline-1 outline-slate-700/50 backdrop-blur-sm">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <span className="text-zinc-300 text-xs font-medium font-['K2D']">
+                Signed in as {userEmail}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Stats + content */}
@@ -246,20 +285,90 @@ export default function Dashboard() {
               )}
 
               <button
-                disabled
-                className="w-full h-14 bg-slate-800/20 rounded-lg flex flex-col items-center justify-center cursor-not-allowed"
+                onClick={() => navigate("/scheduler")}
+                className="group w-full h-14 bg-slate-800/70 rounded-lg outline outline-1 outline-offset-[-1px] outline-slate-700/50 flex items-center justify-center gap-2 transition-all duration-200 hover:bg-slate-700/60 hover:-translate-y-0.5 active:scale-[0.98]"
               >
-                <span className="text-indigo-100/20 text-xl font-normal font-['K2D']">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M7 2V5M17 2V5M3.5 9H20.5M5 4H19C20.1046 4 21 4.89543 21 6V20C21 21.1046 20.1046 22 19 22H5C3.89543 22 3 21.1046 3 20V6C3 4.89543 3.89543 4 5 4Z" stroke="#D0BCFF" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span className="text-indigo-100 text-base font-semibold font-['K2D']">
                   Scheduler
                 </span>
-                <span className="text-white text-[10px] font-normal font-['K2D']">
-                  Coming Soon...
+                <span className="inline-flex transform transition-transform duration-200 group-hover:translate-x-1">
+                  <svg width="7" height="11" viewBox="0 0 8 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M4.6 6L0 1.4L1.4 0L7.4 6L1.4 12L0 10.6L4.6 6Z" fill="#D0BCFF" />
+                  </svg>
                 </span>
               </button>
             </div>
           </div>
         </div>
       </main>
+
+      {/* Donate — fixed bottom-right, Dashboard only */}
+      <button
+        onClick={() => setDonationOpen(true)}
+        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-5 py-3 rounded-full bg-gradient-to-r from-purple-500 to-fuchsia-500 text-white text-sm font-semibold font-['K2D'] shadow-[0_8px_24px_-4px_rgba(168,85,247,0.5)] hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-4px_rgba(168,85,247,0.6)] transition-all duration-200 active:scale-[0.97]"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 21C12 21 4 15.5 4 9.5C4 6.5 6.3 4.5 9 4.5C10.5 4.5 11.5 5.2 12 6C12.5 5.2 13.5 4.5 15 4.5C17.7 4.5 20 6.5 20 9.5C20 15.5 12 21 12 21Z" fill="white" />
+        </svg>
+        Support Us
+      </button>
+
+      {donationOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm px-4 pb-6 sm:pb-0">
+          <div className="w-full max-w-sm bg-slate-800 rounded-2xl outline outline-1 outline-slate-700/50 p-6 flex flex-col gap-5">
+            <div className="flex items-center justify-between">
+              <span className="text-indigo-100 text-lg font-semibold font-['K2D']">
+                Support UPDO AI
+              </span>
+              <button
+                onClick={() => setDonationOpen(false)}
+                className="text-zinc-400 hover:text-zinc-200 text-sm"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-zinc-400 text-sm font-['K2D']">
+              Enjoying UPDO AI? A small donation helps us keep building.
+            </p>
+
+            <div className="grid grid-cols-4 gap-2">
+              {[50, 100, 250, 500].map((amt) => (
+                <button
+                  key={amt}
+                  onClick={() => setDonationAmount(amt)}
+                  className={`h-10 rounded-lg text-sm font-semibold font-['K2D'] transition-colors ${
+                    donationAmount === amt
+                      ? "bg-purple-500 text-white"
+                      : "bg-slate-700/60 text-zinc-300 hover:bg-slate-700"
+                  }`}
+                >
+                  ₹{amt}
+                </button>
+              ))}
+            </div>
+
+            <input
+              type="number"
+              min="1"
+              value={donationAmount}
+              onChange={(e) => setDonationAmount(Number(e.target.value))}
+              className="w-full h-10 px-3 rounded-lg bg-slate-900/60 outline outline-1 outline-slate-700/50 text-indigo-100 text-sm font-['K2D'] focus:outline-purple-400"
+              placeholder="Custom amount (₹)"
+            />
+
+            <button
+              onClick={handleDonate}
+              disabled={donationLoading || donationAmount < 1}
+              className="w-full h-12 bg-purple-300 rounded-lg text-violet-900 text-base font-bold font-['K2D'] transition-all hover:bg-purple-200 disabled:opacity-40 disabled:pointer-events-none"
+            >
+              {donationLoading ? "Opening checkout..." : `Donate ₹${donationAmount}`}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,12 +1,13 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 
-// Shared top nav used on Dashboard, Campaign, Brand Settings, and Home.
+// Shared top nav used on Dashboard, Campaign, Scheduler, Brand Settings, and Home.
 // Active-route highlighting is handled by NavLink; the underline position
 // is tracked separately so it can slide smoothly between tabs.
 const NAV_LINKS = [
   { label: "Dashboard", to: "/dashboard" },
   { label: "Campaign", to: "/campaign" },
+  { label: "Scheduler", to: "/scheduler" },
   { label: "Brand Settings", to: "/brand-settings" },
   { label: "Home", to: "/" },
 ];
