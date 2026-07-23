@@ -1,6 +1,5 @@
 // donationService.js
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
-
+const API_BASE = import.meta.env.VITE_API_URL;
 /**
  * Opens Razorpay Checkout for a donation.
  * @param {number} amountInRupees - amount in INR, e.g. 100 for ₹100 (backend converts to paise)
