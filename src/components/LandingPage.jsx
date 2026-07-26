@@ -6,6 +6,7 @@ import xIcon from "../assets/X.svg";
 import facebookIcon from "../assets/Facebook.svg";
 import whatsappIcon from "../assets/WhatsApp.svg";
 import { Link } from "react-router-dom";
+import { getApprovedReviews, submitReview } from "../services/reviewService";
 
 const socials = [
   { icon: linkedinIcon, label: "LinkedIn", href: "https://www.linkedin.com/company/ai-updo/about/?viewAsMember=true" },
@@ -100,22 +101,15 @@ function PenIcon({ className = "w-4 h-4" }) {
   );
 }
 
-const SEED_REVIEWS = [
-  { id: "r1", name: "Ananya R.", business: "Bakery Owner", rating: 5, text: "UPDO cut our poster creation time from hours to minutes. The AI understands our brand better than some designers we've hired in the past." },
-  { id: "r2", name: "Karthik S.", business: "Gym Studio", rating: 4, text: "Great tool for quick social posts. Would love a bit more layout variety but overall very happy with the output quality." },
-  { id: "r3", name: "Priya M.", business: "Boutique Owner", rating: 5, text: "The scheduling planner alone saves me so much stress every week. Highly recommend for small business owners juggling everything solo." },
-  { id: "r4", name: "Rahul V.", business: "Cafe Owner", rating: 5, text: "Posters look like they came from a proper design agency. My Instagram engagement has genuinely improved since switching over." },
-  { id: "r5", name: "Divya K.", business: "Salon Owner", rating: 4, text: "Simple to use, no design skills needed like they promise. The captions feature is a nice bonus I wasn't expecting." },
-  { id: "r6", name: "Sanjay P.", business: "Fitness Coach", rating: 5, text: "Switched from generic templates to UPDO and never looked back. Faster, smarter, and far more on-brand every single time." },
-];
-
 function ReviewCarousel() {
-  const [reviews, setReviews] = useState(SEED_REVIEWS);
+  const [reviews, setReviews] = useState([]);
   const [isHovering, setIsHovering] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [formRating, setFormRating] = useState(5);
   const [formName, setFormName] = useState("");
+  const [formEmail, setFormEmail] = useState("");
   const [formText, setFormText] = useState("");
+  const [submitError, setSubmitError] = useState(null);
   const [justSubmitted, setJustSubmitted] = useState(false);
   const [expandedReview, setExpandedReview] = useState(null);
 
@@ -125,6 +119,21 @@ function ReviewCarousel() {
   const trackRef = useRef(null);
   const posRef = useRef(0);
   const pausedRef = useRef(false);
+
+  // Load approved reviews from the backend for the carousel.
+  useEffect(() => {
+    let cancelled = false;
+    getApprovedReviews()
+      .then((data) => {
+        if (!cancelled) setReviews(data);
+      })
+      .catch((err) => {
+        console.error("[ReviewCarousel] Failed to load reviews:", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     pausedRef.current = isPaused;
@@ -155,120 +164,103 @@ function ReviewCarousel() {
     return () => cancelAnimationFrame(frameId);
   }, []);
 
-  function handleSubmitReview(e) {
+  async function handleSubmitReview(e) {
     e.preventDefault();
-    if (!formText.trim()) return;
-    const newReview = {
-      id: `local-${Date.now()}`,
-      name: formName.trim() || "Anonymous",
-      business: "New review",
-      rating: formRating,
-      text: formText.trim(),
-    };
-    setReviews((prev) => [newReview, ...prev]);
-    setFormName("");
-    setFormText("");
-    setFormRating(5);
-    setFormOpen(false);
-    setJustSubmitted(true);
-    setTimeout(() => setJustSubmitted(false), 3000);
+    if (!formText.trim() || !formEmail.trim()) return;
+    try {
+      setSubmitError(null);
+      const result = await submitReview({
+        name: formName.trim(),
+        email: formEmail.trim(),
+        rating: formRating,
+        reviewText: formText.trim(),
+      });
+
+      // Optimistically show it in this visitor's own carousel right away.
+      // Other visitors won't see it until it's approved in Supabase.
+      if (result.review) {
+        setReviews((prev) => [result.review, ...prev]);
+      }
+
+      setFormName("");
+      setFormEmail("");
+      setFormText("");
+      setFormRating(5);
+      setFormOpen(false);
+      setJustSubmitted(true);
+      setTimeout(() => setJustSubmitted(false), 3000);
+    } catch (err) {
+      setSubmitError(err.message || "Failed to submit review. Please try again.");
+    }
+  }
+
+  function openReviewForm() {
+    setSubmitError(null);
+    setFormOpen(true);
   }
 
   useEffect(() => {
-    if (!expandedReview) return;
+    if (!expandedReview && !formOpen) return;
     function onKey(e) {
-      if (e.key === "Escape") setExpandedReview(null);
+      if (e.key === "Escape") {
+        setExpandedReview(null);
+        setFormOpen(false);
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [expandedReview]);
+  }, [expandedReview, formOpen]);
 
   return (
-    <div
-      className="relative w-full overflow-x-hidden overflow-y-visible"
-      style={{
-        WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)",
-        maskImage: "linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)",
-      }}
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
-    >
-      <div ref={trackRef} className="flex items-center py-2" style={{ willChange: "transform" }}>
-        {track.map((review, i) => {
-          const key = `${review.id}-${i}`;
-          return (
-            <div
-              key={key}
-              className="review-capsule flex-shrink-0 mr-5 w-[260px] sm:w-[300px] rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm px-5 py-4 transition-colors duration-300 ease-out hover:border-white/20 hover:bg-white/[0.07]"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-afacad text-sm sm:text-base text-white">{review.name}</p>
-                  <p className="font-afacad text-xs text-white/50">{review.business}</p>
-                </div>
-                <Stars value={review.rating} size="text-xs sm:text-sm" />
-              </div>
-
-              <div className="mt-3">
-                <p className="font-afacad text-xs sm:text-sm text-white/70 leading-relaxed clamp-3">{review.text}</p>
-              </div>
-
-              <button
-                onClick={() => setExpandedReview(review)}
-                className="mt-3 inline-flex items-center gap-1 rounded-full bg-[rgba(102,51,153,0.35)] hover:bg-[rgba(102,51,153,0.55)] px-3 py-1 text-[11px] sm:text-xs text-white/90 transition-colors duration-200"
+    <div className="w-full">
+      <div
+        className="relative w-full overflow-x-hidden overflow-y-visible"
+        style={{
+          WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)",
+          maskImage: "linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)",
+        }}
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
+      >
+        <div ref={trackRef} className="flex items-center py-2" style={{ willChange: "transform" }}>
+          {track.map((review, i) => {
+            const key = `${review.id}-${i}`;
+            return (
+              <div
+                key={key}
+                className="review-capsule flex-shrink-0 mr-5 w-[260px] sm:w-[300px] rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm px-5 py-4 transition-colors duration-300 ease-out hover:border-white/20 hover:bg-white/[0.07]"
               >
-                Read full ⤢
-              </button>
-            </div>
-          );
-        })}
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-afacad text-sm sm:text-base text-white">{review.name}</p>
+                    <p className="font-afacad text-xs text-white/50">{review.business}</p>
+                  </div>
+                  <Stars value={review.rating} size="text-xs sm:text-sm" />
+                </div>
+
+                <div className="mt-3">
+                  <p className="font-afacad text-xs sm:text-sm text-white/70 leading-relaxed clamp-3">{review.text}</p>
+                </div>
+
+                <button
+                  onClick={() => setExpandedReview(review)}
+                  className="mt-3 inline-flex items-center gap-1 rounded-full bg-[rgba(102,51,153,0.35)] hover:bg-[rgba(102,51,153,0.55)] px-3 py-1 text-[11px] sm:text-xs text-white/90 transition-colors duration-200"
+                >
+                  Read full ⤢
+                </button>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 z-50 flex items-center">
-        <div
-          className={`relative transition-all duration-500 ease-out border border-white/15 shadow-2xl rounded-3xl flex items-center justify-center ${
-            formOpen ? "w-[300px] sm:w-[380px] py-6 px-5 sm:px-6 bg-[#0F1233]" : "px-6 py-3 bg-[#0F1233]/90 backdrop-blur-md"
-          }`}
-        >
-          {formOpen && (
-            <button
-              onClick={() => setFormOpen(false)}
-              aria-label="Close"
-              className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors duration-200"
-            >
-              ✕
-            </button>
-          )}
-
-          {formOpen ? (
-            <form onSubmit={handleSubmitReview} className="w-full flex flex-col gap-3 pr-2">
-              <p className="font-afacad text-sm sm:text-base text-white">Your Review</p>
-              <Stars value={formRating} onChange={setFormRating} size="text-lg" />
-              <input
-                type="text"
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-                placeholder="Your name (optional)"
-                className="font-afacad w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/30"
-              />
-              <textarea
-                value={formText}
-                onChange={(e) => setFormText(e.target.value)}
-                placeholder="Tell us what you think…"
-                rows={3}
-                className="font-afacad w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/30 resize-none"
-              />
-              <button
-                type="submit"
-                className="font-afacad w-full rounded-xl bg-[rgba(102,51,153,0.8)] hover:bg-[rgba(102,51,153,0.95)] py-2 text-sm text-white transition-colors duration-200"
-              >
-                Post Review
-              </button>
-            </form>
-          ) : justSubmitted ? (
+      {/* Tap to Review pill — sits below the row, outside the capsule track */}
+      <div className="mt-6 flex items-center justify-center">
+        <div className="relative border border-white/15 shadow-2xl rounded-full px-6 py-3 bg-[#0F1233]/90 backdrop-blur-md flex items-center justify-center">
+          {justSubmitted ? (
             <p className="font-afacad text-base sm:text-lg text-white">Thanks for your review ✓</p>
           ) : (
-            <button onClick={() => setFormOpen(true)} className="font-afacad flex items-center gap-2 text-base sm:text-lg text-white">
+            <button onClick={openReviewForm} className="font-afacad flex items-center gap-2 text-base sm:text-lg text-white">
               <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/85">
                 <PenIcon className="w-3.5 h-3.5 text-[#1a1a2e]" />
               </span>
@@ -278,14 +270,78 @@ function ReviewCarousel() {
         </div>
       </div>
 
+      {formOpen && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-[#000B2E]/70 backdrop-blur-md px-4 modal-fade"
+          onClick={() => setFormOpen(false)}
+        >
+          <GlowBorder
+            as="div"
+            radius="1.5rem"
+            size={320}
+            lift={false}
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-md bg-[#0F1233] shadow-[0_0_90px_-10px_rgba(102,51,153,0.6)] px-7 py-8 sm:px-10 sm:py-10 modal-pop"
+          >
+            <button
+              onClick={() => setFormOpen(false)}
+              aria-label="Close"
+              className="absolute top-5 right-5 w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors duration-200"
+            >
+              ✕
+            </button>
+
+            <form onSubmit={handleSubmitReview} className="w-full flex flex-col gap-4">
+              <p className="font-afacad text-lg sm:text-xl text-white">Your Review</p>
+              <Stars value={formRating} onChange={setFormRating} size="text-xl" />
+              <input
+                type="text"
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+                placeholder="Your name (optional)"
+                className="font-afacad w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/30"
+              />
+              <input
+                type="email"
+                value={formEmail}
+                onChange={(e) => setFormEmail(e.target.value)}
+                placeholder="Your email"
+                required
+                className="font-afacad w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/30"
+              />
+              <textarea
+                value={formText}
+                onChange={(e) => setFormText(e.target.value)}
+                placeholder="Tell us what you think…"
+                rows={4}
+                className="font-afacad w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/30 resize-none"
+              />
+              {submitError && (
+                <p className="font-afacad text-xs text-red-300">{submitError}</p>
+              )}
+              <button
+                type="submit"
+                className="font-afacad w-full rounded-xl bg-[rgba(102,51,153,0.8)] hover:bg-[rgba(102,51,153,0.95)] py-2.5 text-sm text-white transition-colors duration-200"
+              >
+                Post Review
+              </button>
+            </form>
+          </GlowBorder>
+        </div>
+      )}
+
       {expandedReview && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 modal-fade"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-[#000B2E]/70 backdrop-blur-md px-4 modal-fade"
           onClick={() => setExpandedReview(null)}
         >
-          <div
+          <GlowBorder
+            as="div"
+            radius="1.5rem"
+            size={380}
+            lift={false}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-xl rounded-3xl border border-white/15 bg-[#0F1233] shadow-2xl px-7 py-8 sm:px-10 sm:py-10 modal-pop"
+            className="relative w-full max-w-xl bg-[#0F1233] shadow-[0_0_90px_-10px_rgba(102,51,153,0.6)] px-7 py-8 sm:px-10 sm:py-10 modal-pop"
           >
             <button
               onClick={() => setExpandedReview(null)}
@@ -306,7 +362,7 @@ function ReviewCarousel() {
             <p className="font-afacad mt-6 text-base sm:text-lg text-white/80 leading-relaxed max-h-[55vh] overflow-y-auto pr-1">
               {expandedReview.text}
             </p>
-          </div>
+          </GlowBorder>
         </div>
       )}
     </div>
