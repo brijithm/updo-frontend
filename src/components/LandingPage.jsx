@@ -6,7 +6,7 @@ import xIcon from "../assets/X.svg";
 import facebookIcon from "../assets/Facebook.svg";
 import whatsappIcon from "../assets/WhatsApp.svg";
 import { Link } from "react-router-dom";
-import { getApprovedReviews, submitReview } from "../services/reviewService.js";
+import { getApprovedReviews, submitReview } from "../services/reviewService";
 
 const socials = [
   { icon: linkedinIcon, label: "LinkedIn", href: "https://www.linkedin.com/company/ai-updo/about/?viewAsMember=true" },
