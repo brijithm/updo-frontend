@@ -18,6 +18,7 @@ import PrivacyPolicy from "./components/PrivacyPolicy";
 import TermsAndConditions from "./components/TermsAndConditions";
 import RefundPolicy from "./components/RefundPolicy";
 import Scheduler from "./components/Scheduler";
+import DonationThanks from "./components/DonationThanks";
 
 // Thin wrapper so the /campaign route has somewhere to send onBack.
 // Campaign.jsx now owns its own internal steps (form -> preview -> success)
@@ -58,6 +59,7 @@ function App() {
       <Route path="/terms" element={<TermsAndConditions />} />
       <Route path="/refund-policy" element={<RefundPolicy />} />
       <Route path="/scheduler" element={<Scheduler />} />
+      <Route path="/donation-thanks" element={<DonationThanks />} />
 
       <Route
         path="/dashboard"
