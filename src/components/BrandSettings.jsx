@@ -230,6 +230,7 @@ export default function BrandSettings() {
         brandName: form.brandName,
         category: form.category,
         Niche: form.Niche,
+        tagline: form.tagline,
         website: form.website,
         phone: form.phone,
         socialLinks,
@@ -300,6 +301,14 @@ export default function BrandSettings() {
                 onChange={handleFieldChange}
                 disabled={isLocked}
                 placeholder="e.g. Hotels, Digital Marketing, Fitness"
+              />
+              <FormField
+                label="Tagline"
+                name="tagline"
+                value={form.tagline}
+                onChange={handleFieldChange}
+                disabled={isLocked}
+                placeholder="e.g. Great coffee, honestly made"
               />
               <FormField
                 label="Website"

@@ -25,6 +25,11 @@ function StatusBadge({ status }) {
 const cardClass =
   "p-6 bg-slate-800/70 rounded-xl outline outline-1 outline-offset-[-1px] outline-slate-700/50 backdrop-blur-[6px] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-purple-950/20";
 
+// ─────────────────────────────────────────────────────────────
+// Addition 1: small delay helper for retry backoff.
+// ─────────────────────────────────────────────────────────────
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export default function Dashboard() {
   const navigate = useNavigate();
 
@@ -33,24 +38,60 @@ export default function Dashboard() {
   const [campaignLimit, setCampaignLimit] = useState(7);
   const [recentCampaigns, setRecentCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Addition 1: surfaced instead of silently keeping stale defaults on failure.
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    async function loadDashboardData() {
+    let cancelled = false;
+
+    // ─────────────────────────────────────────────────────────
+    // Addition 1: retry with backoff.
+    // WHY: right after email verification the backend can be cold
+    // (Railway spin-down) or the very first request can transiently
+    // fail. Previously a single failed fetch silently left
+    // totalCampaigns/campaignLimit at their React defaults (0/7),
+    // which look like real data but aren't. Now we retry a few times
+    // before giving up, and only then show a real error state.
+    // ─────────────────────────────────────────────────────────
+    async function loadDashboardData(attempt = 1) {
+      const MAX_ATTEMPTS = 4;
+      const RETRY_DELAY_MS = 1000;
+
       try {
         const [campaigns, usage] = await Promise.all([
           getMyCampaigns(),
           getUsageSummary(),
         ]);
+
+        if (cancelled) return;
+
         setRecentCampaigns(campaigns.slice(0, 5)); // show most recent 5
         setTotalCampaigns(usage.posts_remaining);
         setCampaignLimit(usage.posts_max);
-      } catch (err) {
-        console.error("[Dashboard] Failed to load dashboard data:", err);
-      } finally {
+        setLoadError(false);
         setLoading(false);
+      } catch (err) {
+        console.error(
+          `[Dashboard] Failed to load dashboard data (attempt ${attempt}/${MAX_ATTEMPTS}):`,
+          err
+        );
+
+        if (cancelled) return;
+
+        if (attempt < MAX_ATTEMPTS) {
+          await delay(RETRY_DELAY_MS * attempt); // 1s, 2s, 3s backoff
+          if (!cancelled) await loadDashboardData(attempt + 1);
+        } else {
+          setLoadError(true);
+          setLoading(false);
+        }
       }
     }
+
     loadDashboardData();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // New Campaign is blocked in two cases:
@@ -103,8 +144,8 @@ export default function Dashboard() {
     }
   }
 
-  const enter = (delay = "") =>
-    `transition-all duration-700 ease-out ${delay} ${
+  const enter = (delayClass = "") =>
+    `transition-all duration-700 ease-out ${delayClass} ${
       mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
     }`;
 
@@ -170,9 +211,24 @@ export default function Dashboard() {
                 <path d="M16 9V7H20V9H16ZM17.2 16L14 13.6L15.2 12L18.4 14.4L17.2 16ZM15.2 4L14 2.4L17.2 0L18.4 1.6L15.2 4ZM3 15V11H2C1.45 11 0.979167 10.8042 0.5875 10.4125C0.195833 10.0208 0 9.55 0 9V7C0 6.45 0.195833 5.97917 0.5875 5.5875C0.979167 5.19583 1.45 5 2 5H6L11 2V14L6 11H5V15H3ZM9 10.45V5.55L6.55 7H2V9H6.55L9 10.45ZM12 11.35V4.65C12.45 5.05 12.8125 5.5375 13.0875 6.1125C13.3625 6.6875 13.5 7.31667 13.5 8C13.5 8.68333 13.3625 9.3125 13.0875 9.8875C12.8125 10.4625 12.45 10.95 12 11.35Z" fill="#D0BCFF" />
               </svg>
             </div>
-            <div className="text-indigo-100 text-3xl font-semibold font-['K2D'] leading-10">
-              {loading ? "..." : `${totalCampaigns} / ${campaignLimit}`}
-            </div>
+            {/* Addition 1: show a real error/retry state instead of a bare number when the load truly failed. */}
+            {loadError ? (
+              <div className="flex items-center justify-between">
+                <span className="text-red-300 text-sm font-medium font-['K2D']">
+                  Couldn't load usage data.
+                </span>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="text-purple-300 text-sm font-medium font-['K2D'] hover:text-purple-200 transition-colors underline"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : (
+              <div className="text-indigo-100 text-3xl font-semibold font-['K2D'] leading-10">
+                {loading ? "..." : `${totalCampaigns} / ${campaignLimit}`}
+              </div>
+            )}
           </div>
 
           {/* Recent Campaigns + Quick Actions */}
