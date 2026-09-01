@@ -132,9 +132,10 @@ export async function submitCampaignRating(campaignId, rating) {
  * Fetches the logged-in user's campaigns from the real backend.
  * GET /campaigns/my-campaigns  ->  { campaigns: [...], count: N }
  *
- * Maps backend fields (campaign_goal, campaign_status, created_at) into the
- * shape Dashboard.jsx already expects (name, status, date) so no JSX has
- * to change — only this function.
+ * Maps backend fields (campaign_goal, campaign_status, created_at,
+ * image_url) into the shape Dashboard.jsx / the campaigns list page
+ * expect (name, status, date, imageUrl) so no JSX has to change beyond
+ * consuming `imageUrl` — only this function maps field names.
  */
 export async function getMyCampaigns() {
   const response = await fetch(`${API_BASE_URL}/campaigns/my-campaigns`, {
@@ -168,6 +169,7 @@ export async function getMyCampaigns() {
         })
       : "—",
     status: STATUS_LABELS[c.campaign_status] || c.campaign_status || "Unknown",
+    imageUrl: c.image_url || null,
   }));
 }
 

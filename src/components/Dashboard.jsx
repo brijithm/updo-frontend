@@ -4,6 +4,7 @@ import Navbar from "./Navbar";
 import { hasBrandSettings } from "../services/brandService";
 import { getMyCampaigns, getUsageSummary } from "../services/campaignService";
 import { openDonationCheckout } from "../services/donationService";
+import { downloadImageFromUrl } from "../services/formUtils";
 
 function StatusBadge({ status }) {
   const isPublished = status === "Published";
@@ -17,6 +18,47 @@ function StatusBadge({ status }) {
     >
       {status}
     </span>
+  );
+}
+
+// Small download icon button for a single campaign row. Disabled when the
+// campaign has no image_url yet (e.g. still processing or generation failed).
+function DownloadButton({ campaign }) {
+  const [downloading, setDownloading] = useState(false);
+  const hasImage = Boolean(campaign.imageUrl);
+
+  const handleClick = async (e) => {
+    e.stopPropagation();
+    if (!hasImage || downloading) return;
+    setDownloading(true);
+    try {
+      await downloadImageFromUrl(campaign.imageUrl, `updo-campaign-${campaign.id}.png`);
+    } catch (err) {
+      console.error("[Dashboard] Failed to download campaign image:", err);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={!hasImage || downloading}
+      title={hasImage ? "Download poster" : "Poster not ready yet"}
+      className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-purple-300 hover:text-purple-200 hover:bg-purple-300/10 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+    >
+      {downloading ? (
+        <div className="w-4 h-4 border-2 border-purple-300/40 border-t-purple-300 rounded-full animate-spin" />
+      ) : (
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M8 11.333L4 7.333l.943-.943L7.333 8.78V1.333h1.334V8.78l2.39-2.39.943.943L8 11.333ZM2.667 14.667c-.367 0-.68-.13-.94-.39-.26-.26-.39-.573-.39-.94v-2.67H2.67v2.67h10.666v-2.67h1.333v2.67c0 .367-.13.68-.39.94-.26.26-.573.39-.94.39H2.667Z"
+            fill="currentColor"
+          />
+        </svg>
+      )}
+    </button>
   );
 }
 
@@ -254,18 +296,19 @@ export default function Dashboard() {
                     <th className="pb-2">Platform</th>
                     <th className="pb-2">Date</th>
                     <th className="pb-2 text-right">Status</th>
+                    <th className="pb-2 text-right">Download</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan={4} className="py-6 text-center text-zinc-400 font-['K2D'] text-sm">
+                      <td colSpan={5} className="py-6 text-center text-zinc-400 font-['K2D'] text-sm">
                         Loading campaigns...
                       </td>
                     </tr>
                   ) : recentCampaigns.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="py-6 text-center text-zinc-400 font-['K2D'] text-sm">
+                      <td colSpan={5} className="py-6 text-center text-zinc-400 font-['K2D'] text-sm">
                         No campaigns yet — create your first one to see it here.
                       </td>
                     </tr>
@@ -280,6 +323,9 @@ export default function Dashboard() {
                         <td className="py-3 text-zinc-300 font-['K2D'] text-sm">{c.date}</td>
                         <td className="py-3 text-right">
                           <StatusBadge status={c.status} />
+                        </td>
+                        <td className="py-3 text-right">
+                          <DownloadButton campaign={c} />
                         </td>
                       </tr>
                     ))
