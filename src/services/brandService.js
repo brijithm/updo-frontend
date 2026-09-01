@@ -27,6 +27,7 @@ function authHeaders() {
  *   {
  *     brandName: string,       // required, never null
  *     category: string | null,
+ *     niche: string | null,
  *     tagline: string | null,
  *     website: string | null,
  *     phone: string | null,
@@ -43,6 +44,11 @@ function authHeaders() {
  *     },
  *     logoFileName: string | null, // actual file upload handled separately, via uploadBrandLogo()
  *   }
+ *
+ * NOTE: the backend "brands" table only has a single `niche` column, but
+ * the form collects both a Category and a Niche field. Both are merged
+ * into that one column below rather than letting one silently overwrite
+ * or drop the other.
  */
 export async function saveBrandSettings(rawPayload) {
   const payload = emptyToNull(rawPayload);
@@ -50,7 +56,7 @@ export async function saveBrandSettings(rawPayload) {
 
   const backendPayload = {
     name: payload.brandName,
-    niche: payload.category,
+    niche: [payload.category, payload.niche].filter(Boolean).join(" — ") || null,
     tone: null, // no matching form field yet
     tagline: payload.tagline,
     phone: payload.phone,

@@ -118,6 +118,7 @@ function SocialLinkModal({ platform, initialValue, onSave, onClose }) {
 const EMPTY_FORM = {
   brandName: "",
   category: "",
+  niche: "",
   tagline: "",
   website: "",
   phone: "",
@@ -148,6 +149,7 @@ export default function BrandSettings() {
           setForm({
             brandName: brand.name || "",
             category: brand.niche || "",
+            niche: brand.niche || "",
             tagline: brand.tagline || "",
             website: brand.website || "",
             phone: brand.phone || "",
@@ -229,7 +231,7 @@ export default function BrandSettings() {
       const result = await saveBrandSettings({
         brandName: form.brandName,
         category: form.category,
-        Niche: form.Niche,
+        niche: form.niche,
         tagline: form.tagline,
         website: form.website,
         phone: form.phone,
@@ -296,8 +298,8 @@ export default function BrandSettings() {
 
               <FormField
                 label="Niche"
-                name="Niche"
-                value={form.Niche}
+                name="niche"
+                value={form.niche}
                 onChange={handleFieldChange}
                 disabled={isLocked}
                 placeholder="e.g. Hotels, Digital Marketing, Fitness"
