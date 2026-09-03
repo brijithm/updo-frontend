@@ -108,23 +108,9 @@ export default function Dashboard() {
         if (cancelled) return;
 
         setRecentCampaigns(campaigns.slice(0, 5)); // show most recent 5
-        const postsUsed =
-          typeof usage?.posts_used === "number"
-            ? usage.posts_used
-            : 0;
-
-        const max =
-          typeof usage?.posts_max === "number" && usage.posts_max > 0
-            ? usage.posts_max
-            : 7;
-
-        const remaining =
-          typeof usage?.posts_remaining === "number"
-            ? usage.posts_remaining
-            : Math.max(0, max - postsUsed);
-
-        setTotalCampaigns(remaining);
-        setCampaignLimit(max);
+        posts_used = usage.get("posts_used", 0)
+        posts_max = config["posts_per_month"]
+        posts_remaining = max(0, posts_max - posts_used)
         setLoadError(false);
         setLoading(false);
       } catch (err) {
