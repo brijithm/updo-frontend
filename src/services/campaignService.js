@@ -46,10 +46,10 @@ async function getDefaultBrandId() {
  * generation to complete before responding (can take 10-30+ seconds).
  *
  * Payload from Campaign.jsx (rawPayload):
- *   { aspectRatio, platform, goal, mood, offer, audience }
+ *   { aspectRatio, platform, goal, mood, offer, audience, cta, operating_hours }
  *
  * Maps to backend's GenerateCampaignRequest:
- *   { brand_id, campaign_goal, platform, mood, cta, offer, target_audience }
+ *   { brand_id, campaign_goal, platform, mood, cta, offer, target_audience, operating_hours }
  *
  * NOTE on limit_reached: the backend does NOT return a JSON
  * { status: "limit_reached" } — it throws HTTP 403 with a detail message
@@ -75,6 +75,7 @@ export async function generateCampaign(rawPayload) {
     cta: payload.cta || "Learn More",
     offer: payload.offer,
     target_audience: payload.audience,
+    operating_hours: payload.operating_hours || payload.operatingHours || null,
   };
 
   const response = await fetch(`${API_BASE_URL}/campaigns/generate`, {

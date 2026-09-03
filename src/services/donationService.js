@@ -1,5 +1,7 @@
 // donationService.js
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL ||
+  "https://updo-ai-backend-production.up.railway.app";
 
 /**
  * Opens Razorpay Checkout for a donation.

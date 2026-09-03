@@ -108,8 +108,15 @@ export default function Dashboard() {
         if (cancelled) return;
 
         setRecentCampaigns(campaigns.slice(0, 5)); // show most recent 5
-        setTotalCampaigns(usage.posts_remaining);
-        setCampaignLimit(usage.posts_max);
+        const remaining = typeof usage?.posts_remaining === "number" ? usage.posts_remaining : 0;
+        const max = (usage?.posts_max && usage.posts_max > 0)
+          ? usage.posts_max
+          : (usage?.posts_used && usage.posts_used > 0)
+            ? (usage.posts_used + Math.max(0, remaining))
+            : 7;
+
+        setTotalCampaigns(Math.max(0, remaining));
+        setCampaignLimit(max > 0 ? max : 7);
         setLoadError(false);
         setLoading(false);
       } catch (err) {
@@ -268,7 +275,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="text-indigo-100 text-3xl font-semibold font-['K2D'] leading-10">
-                {loading ? "..." : `${totalCampaigns} / ${campaignLimit}`}
+                {loading ? "..." : `${Math.max(0, totalCampaigns ?? 0)} / ${campaignLimit > 0 ? campaignLimit : 7}`}
               </div>
             )}
           </div>
@@ -382,7 +389,7 @@ export default function Dashboard() {
               )}
               {brandReady && limitReached && (
                 <p className="text-zinc-400 text-xs font-['K2D'] text-center -mt-2">
-                  You've used all {campaignLimit} campaign slots on your plan.
+                  You've used all {campaignLimit > 0 ? campaignLimit : 7} campaign slots on your plan.
                 </p>
               )}
 

@@ -120,6 +120,8 @@ export default function Campaign({ onBack, onLogout }) {
     mood: "",
     offer: "",
     audience: "",
+    cta: "",
+    operating_hours: "",
   });
 
   const [isGenerating, setIsGenerating] = useState(false);
@@ -279,7 +281,14 @@ export default function Campaign({ onBack, onLogout }) {
               name="mood"
               value={details.mood}
               onChange={handleDetailChange}
-              placeholder="e.g. Festive, energetic"
+              placeholder="e.g. Festive, energetic (default: Professional)"
+            />
+            <FormField
+              label="Call to Action (CTA)"
+              name="cta"
+              value={details.cta}
+              onChange={handleDetailChange}
+              placeholder="e.g. Learn More, Book Now, Shop Now"
             />
             <FormField
               label="Offer"
@@ -294,6 +303,13 @@ export default function Campaign({ onBack, onLogout }) {
               value={details.audience}
               onChange={handleDetailChange}
               placeholder="e.g. Young professionals, 22-35"
+            />
+            <FormField
+              label="Operating Hours"
+              name="operating_hours"
+              value={details.operating_hours}
+              onChange={handleDetailChange}
+              placeholder="e.g. Mon-Sat 9:00 AM - 8:00 PM"
             />
           </div>
         </section>

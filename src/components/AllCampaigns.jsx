@@ -80,12 +80,19 @@ export default function AllCampaigns() {
         }
 
         if (usage.status === "fulfilled") {
-          setPostsUsed(usage.value.posts_used ?? 0);
-          setPostsMax(usage.value.posts_max ?? null);
+          const u = usage.value || {};
+          const used = u.posts_used ?? 0;
+          const remaining = typeof u.posts_remaining === "number" ? u.posts_remaining : 0;
+          const max = (u.posts_max && u.posts_max > 0)
+            ? u.posts_max
+            : (used > 0 ? used + Math.max(0, remaining) : 7);
+          setPostsUsed(used);
+          setPostsMax(max > 0 ? max : 7);
         } else if (campaignList.status === "fulfilled") {
           // Usage summary failed but we still have campaigns — fall back to
-          // treating the campaign count as "used" with no known max.
+          // treating the campaign count as "used" with fallback max.
           setPostsUsed(campaignList.value.length);
+          setPostsMax(7);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -214,7 +221,7 @@ export default function AllCampaigns() {
           )}
           {brandReady && limitReached && (
             <p className="text-zinc-400 text-xs font-['K2D']">
-              You've used all {postsMax} campaign slots on your plan.
+              You've used all {postsMax > 0 ? postsMax : 7} campaign slots on your plan.
             </p>
           )}
         </div>
