@@ -57,6 +57,13 @@ async function getDefaultBrandId() {
  * it into { status: "limit_reached" } so Campaign.jsx's existing check
  * (`result?.status === "limit_reached"`) keeps working unchanged.
  *
+ * NOTE on in_progress: the backend now holds a per-user generation lock
+ * (see app/routes/usage.py: acquire_generation_lock) and throws HTTP 429
+ * if a generation is already running for this user — e.g. a double-click,
+ * a second tab, or a retry after a lost/timed-out response. We normalize
+ * that into { status: "in_progress" } so callers can show a clear message
+ * instead of the generic failed screen.
+ *
  * NOTE on aspectRatio: the backend does not currently use this — it
  * hardcodes size="1024x1024" when generating the image. Selecting
  * Portrait/Landscape won't change the output shape yet.
@@ -90,6 +97,11 @@ export async function generateCampaign(rawPayload) {
     if (response.status === 403) {
       // Beta limit reached (or brand plan cap) — normalize for Campaign.jsx
       return { success: false, status: "limit_reached" };
+    }
+    if (response.status === 429) {
+      // Generation already in progress for this user (lock held) — normalize
+      // so callers can show "please wait" instead of a hard failure.
+      return { success: false, status: "in_progress", message: data?.detail };
     }
     throw new Error(data?.detail || "Failed to generate campaign");
   }

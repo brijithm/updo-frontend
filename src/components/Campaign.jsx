@@ -176,6 +176,18 @@ export default function Campaign({ onBack, onLogout }) {
         return;
       }
 
+      // Backend-held generation lock rejected this request because one is
+      // already running for this user (double-click, second tab, or a
+      // retry after a lost/timed-out response). Stay on the form and let
+      // them know, rather than routing to the hard failure screen.
+      if (result?.status === "in_progress") {
+        setGenerateError(
+          result?.message ||
+            "A campaign is already generating for your account. Please wait a moment and try again."
+        );
+        return;
+      }
+
       if (!result?.success || result?.status === "failed" || !result?.imageUrl) {
         setStep("failed");
         return;
