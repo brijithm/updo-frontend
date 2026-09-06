@@ -108,9 +108,14 @@ export default function Dashboard() {
         if (cancelled) return;
 
         setRecentCampaigns(campaigns.slice(0, 5)); // show most recent 5
-        posts_used = usage.get("posts_used", 0)
-        posts_max = config["posts_per_month"]
-        posts_remaining = max(0, posts_max - posts_used)
+
+        // getUsageSummary() -> GET /usage/summary, which already returns
+        // { posts_used, posts_max, posts_remaining, ... } precomputed by
+        // the backend (see app/routes/usage.py: get_usage_summary()). No
+        // need to recompute anything client-side — just read the fields.
+        setTotalCampaigns(usage.posts_remaining);
+        setCampaignLimit(usage.posts_max);
+
         setLoadError(false);
         setLoading(false);
       } catch (err) {
