@@ -5,18 +5,7 @@
 // ---------------------------------------------------------------------------
 
 import { emptyToNull } from "./formUtils";
-
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ||
-  "https://updo-ai-backend-production.up.railway.app";
-
-function authHeaders() {
-  const token = localStorage.getItem("updo_access_token");
-  return {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-}
+import { authFetch } from "./apiClient";
 
 /**
  * Fetches the user's default/only brand id. Campaign generation requires
@@ -24,9 +13,7 @@ function authHeaders() {
  * first one from getMyBrands() rather than adding a brand-picker UI.
  */
 async function getDefaultBrandId() {
-  const response = await fetch(`${API_BASE_URL}/brands/my-brands`, {
-    headers: authHeaders(),
-  });
+  const response = await authFetch("/brands/my-brands");
 
   if (!response.ok) {
     throw new Error("Failed to load brand for campaign generation");
@@ -85,9 +72,8 @@ export async function generateCampaign(rawPayload) {
     operating_hours: payload.operating_hours || payload.operatingHours || null,
   };
 
-  const response = await fetch(`${API_BASE_URL}/campaigns/generate`, {
+  const response = await authFetch("/campaigns/generate", {
     method: "POST",
-    headers: authHeaders(),
     body: JSON.stringify(backendPayload),
   });
 
@@ -132,9 +118,8 @@ export async function submitCampaignRating(campaignId, rating) {
   // ---------------------------------------------------------------------------
 
   // --- REAL IMPLEMENTATION ---------------------------------------------------
-  // const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/rating`, {
+  // const response = await authFetch(`/campaigns/${campaignId}/rating`, {
   //   method: "POST",
-  //   headers: authHeaders(),
   //   body: JSON.stringify({ rating }),
   // });
   // if (!response.ok) throw new Error("Failed to submit rating");
@@ -151,9 +136,7 @@ export async function submitCampaignRating(campaignId, rating) {
  * consuming `imageUrl` — only this function maps field names.
  */
 export async function getMyCampaigns() {
-  const response = await fetch(`${API_BASE_URL}/campaigns/my-campaigns`, {
-    headers: authHeaders(),
-  });
+  const response = await authFetch("/campaigns/my-campaigns");
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => null);
@@ -191,9 +174,7 @@ export async function getMyCampaigns() {
  * GET /usage/summary  ->  { posts_used, posts_max, posts_remaining, ... }
  */
 export async function getUsageSummary() {
-  const response = await fetch(`${API_BASE_URL}/usage/summary`, {
-    headers: authHeaders(),
-  });
+  const response = await authFetch("/usage/summary");
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => null);

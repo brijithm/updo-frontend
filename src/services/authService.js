@@ -10,7 +10,7 @@ const API_BASE_URL =
 
 /**
  * Logs in with email + password.
- * Returns { access_token, user_id, email } on success.
+ * Returns { access_token, refresh_token, user_id, email } on success.
  * Throws an Error with a user-facing message on failure.
  */
 export async function loginUser(email, password) {
@@ -29,6 +29,13 @@ export async function loginUser(email, password) {
   // Persist token so other API calls (brands, campaigns, etc.) can use it,
   // and so ProtectedRoute.jsx can tell the user is logged in.
   localStorage.setItem("updo_access_token", data.access_token);
+  // Persist the refresh token too — without this, apiClient.js's authFetch()
+  // has nothing to exchange for a new access token once the current one
+  // expires (~1hr), and every request just starts 401ing until the user
+  // manually logs out and back in.
+  if (data.refresh_token) {
+    localStorage.setItem("updo_refresh_token", data.refresh_token);
+  }
   localStorage.setItem("updo_user_email", data.email);
 
   return data;
@@ -54,6 +61,43 @@ export async function registerUser(email, password, fullName) {
   }
 
   return data;
+}
+
+/**
+ * Exchanges the stored refresh token for a new access token + refresh
+ * token. Called by apiClient.js's authFetch() the first time a request
+ * comes back 401 — not meant to be called directly from components.
+ *
+ * Returns true on success (new tokens are persisted here), false if the
+ * refresh token is missing, invalid, or expired — callers should treat
+ * false as "force the user to log in again".
+ */
+export async function refreshAccessToken() {
+  const refreshToken = localStorage.getItem("updo_refresh_token");
+  if (!refreshToken) return false;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+
+    if (!response.ok) return false;
+
+    const data = await response.json().catch(() => null);
+    if (!data?.access_token) return false;
+
+    localStorage.setItem("updo_access_token", data.access_token);
+    // Supabase rotates the refresh token on every use — the old one stops
+    // working, so we must overwrite it here or the *next* refresh will fail.
+    if (data.refresh_token) {
+      localStorage.setItem("updo_refresh_token", data.refresh_token);
+    }
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -114,5 +158,6 @@ export async function resetPassword(newPassword, accessToken) {
  */
 export function logoutUser() {
   localStorage.removeItem("updo_access_token");
+  localStorage.removeItem("updo_refresh_token");
   localStorage.removeItem("updo_user_email");
 }
