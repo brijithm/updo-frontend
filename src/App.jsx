@@ -17,8 +17,9 @@ import NotFound from "./components/NotFound";
 import PrivacyPolicy from "./components/PrivacyPolicy";
 import TermsAndConditions from "./components/TermsAndConditions";
 import RefundPolicy from "./components/RefundPolicy";
-import Scheduler from "./components/Scheduler";
+import Scheduler from "./components/scheduler/Scheduler";
 import DonationThanks from "./components/DonationThanks";
+import { logoutUser } from "./services/authService";
 
 // Thin wrapper so the /campaign route has somewhere to send onBack.
 // Campaign.jsx now owns its own internal steps (form -> preview -> success)
@@ -33,18 +34,25 @@ function CampaignPage() {
     navigate("/dashboard");
   };
 
-  return <Campaign onBack={handleBack} />;
+  // Used by the hidden limit_reached page's Log out button.
+  const handleLogout = () => {
+    logoutUser();
+    navigate("/login");
+  };
+
+  return <Campaign onBack={handleBack} onLogout={handleLogout} />;
 }
 
 function App() {
   const [loading, setLoading] = useState(true);
 
+  // Fallback only: normally the video's end hides the loader.
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 2200);
+    const timer = setTimeout(() => setLoading(false), 6000);
     return () => clearTimeout(timer);
   }, []);
 
-  if (loading) return <LoadingPage />;
+  if (loading) return <LoadingPage onComplete={() => setLoading(false)} />;
 
   return (
     <Routes>

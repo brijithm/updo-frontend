@@ -5,6 +5,19 @@ import { hasBrandSettings } from "../services/brandService";
 import { getMyCampaigns, getUsageSummary } from "../services/campaignService";
 import { openDonationCheckout } from "../services/donationService";
 import { downloadImageFromUrl } from "../services/formUtils";
+// MOBILE ONLY: copy Anima's `204274-1.png` (the UPDO logo) to src/assets/updo-logo.png
+import updoLogo from "../assets/logo.png";
+
+// MOBILE ONLY: burger-menu drawer items (Figma order + Scheduler).
+// `to: null` = current page (Dashboard) -> just closes the drawer.
+// Adjust paths here if any differ from your Navbar's links.
+const MOBILE_NAV = [
+  { label: "Dashboard", to: null },
+  { label: "Brand Setting", to: "/brand-settings" },
+  { label: "Campaign", to: "/campaign" },   // was "/campaigns"
+  { label: "Scheduler", to: "/scheduler" },
+  { label: "Home", to: "/" },
+];
 
 function StatusBadge({ status }) {
   const isPublished = status === "Published";
@@ -62,10 +75,12 @@ function DownloadButton({ campaign }) {
   );
 }
 
-// Shared card treatment: subtle lift + shadow on hover so the dashboard feels
-// alive without being distracting.
-const cardClass =
-  "p-6 bg-slate-800/70 rounded-xl outline outline-1 outline-offset-[-1px] outline-slate-700/50 backdrop-blur-[6px] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-purple-950/20";
+// Shared card treatment (padding is set per card so mobile can use less):
+// subtle lift + shadow on hover so the dashboard feels alive without being
+// distracting.
+const cardBase =
+  "bg-slate-800/70 rounded-xl outline outline-1 outline-offset-[-1px] outline-slate-700/50 backdrop-blur-[6px] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-purple-950/20";
+const cardClass = `p-6 ${cardBase}`;
 
 // ─────────────────────────────────────────────────────────────
 // Addition 1: small delay helper for retry backoff.
@@ -82,6 +97,9 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   // Addition 1: surfaced instead of silently keeping stale defaults on failure.
   const [loadError, setLoadError] = useState(false);
+
+  // MOBILE ONLY: burger drawer state.
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -162,6 +180,26 @@ export default function Dashboard() {
     return () => cancelAnimationFrame(id);
   }, []);
 
+  // MOBILE ONLY: close drawer on Escape and lock page scroll while it's open.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
+
+  function handleMobileNav(to) {
+    setMenuOpen(false);
+    if (to) navigate(to);
+  }
+
   // Signed-in user's email, set by authService.js on login.
   const userEmail = localStorage.getItem("updo_user_email");
 
@@ -198,7 +236,7 @@ export default function Dashboard() {
     }`;
 
   return (
-    <div className="min-h-screen w-full bg-slate-900">
+    <div className="min-h-screen w-full bg-[#000b2e] md:bg-slate-900">
       <style>{`
         /* Quick Actions card: slow, subtle pulsing glow to draw the eye
            without being distracting. Kept scoped to this card only. */
@@ -220,27 +258,131 @@ export default function Dashboard() {
           animation: wandWiggle 0.5s ease-in-out;
         }
 
+        /* MOBILE ONLY: drawer + nav items + donate jiggle */
+        @keyframes backdropFade {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        @keyframes drawerSlideIn {
+          from { transform: translateX(100%); }
+          to   { transform: translateX(0); }
+        }
+        @keyframes navItemIn {
+          from { opacity: 0; transform: translateX(40px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes donateJiggle {
+          0%, 86%, 100% { transform: rotate(0deg); }
+          89% { transform: rotate(-7deg); }
+          92% { transform: rotate(6deg); }
+          95% { transform: rotate(-4deg); }
+          98% { transform: rotate(2deg); }
+        }
+        .drawer-backdrop { animation: backdropFade 250ms ease-out both; }
+        .drawer-panel    { animation: drawerSlideIn 350ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+        .drawer-item     { animation: navItemIn 450ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+        @media (max-width: 767px) {
+          .donate-jiggle {
+            transform-origin: center;
+            animation: donateJiggle 4s ease-in-out 2s infinite;
+          }
+        }
+
         @media (prefers-reduced-motion: reduce) {
           .quick-actions-card { animation: none; }
           .group:hover .wand-icon { animation: none; }
+          .drawer-backdrop, .drawer-panel, .drawer-item, .donate-jiggle { animation: none; }
         }
       `}</style>
 
-      <Navbar />
+      {/* Desktop/tablet (md+): existing Navbar, untouched. `md:contents` keeps
+          the wrapper from generating a box, so Navbar lays out exactly as before. */}
+      <div className="hidden md:contents">
+        <Navbar />
+      </div>
 
-      <main className="max-w-5xl mx-auto px-6 pt-16 pb-20 flex flex-col items-center gap-12">
+      {/* MOBILE ONLY (<md): header with logo + burger */}
+      <header className="md:hidden sticky top-0 z-30 h-[66px] w-full flex items-center justify-between px-[15px] bg-[#000b2e]/90 backdrop-blur-md border-b border-slate-700/40">
+        <img src={updoLogo} alt="UPDO" className="h-7 w-14 object-cover" />
+        <button
+          type="button"
+          onClick={() => setMenuOpen(true)}
+          aria-label="Open navigation menu"
+          aria-expanded={menuOpen}
+          aria-controls="mobile-navigation"
+          className="w-11 h-11 -mr-2 flex items-center justify-center text-indigo-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-purple-300 rounded-lg"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </button>
+      </header>
+
+      {/* MOBILE ONLY (<md): right-side drawer */}
+      {menuOpen && (
+        <div className="md:hidden fixed inset-0 z-50">
+          <div
+            className="drawer-backdrop absolute inset-0 bg-black/50"
+            onClick={() => setMenuOpen(false)}
+            aria-hidden="true"
+          />
+          <nav
+            id="mobile-navigation"
+            aria-label="Dashboard navigation"
+            className="drawer-panel absolute right-0 top-0 h-full w-[218px] max-w-[80vw] bg-[#00061f] border-l border-slate-700/40 shadow-2xl"
+          >
+            <button
+              type="button"
+              onClick={() => setMenuOpen(false)}
+              aria-label="Close navigation menu"
+              className="absolute right-[10px] top-[10px] w-11 h-11 flex items-center justify-center text-indigo-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-purple-300 rounded-lg"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </button>
+
+            <ul className="pt-[111px] pl-6 pr-4 flex flex-col items-start gap-5">
+              {MOBILE_NAV.map((item, i) => {
+                const active = item.to === null;
+                return (
+                  <li
+                    key={item.label}
+                    className="drawer-item"
+                    style={{ animationDelay: `${180 + i * 70}ms` }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleMobileNav(item.to)}
+                      aria-current={active ? "page" : undefined}
+                      className={`text-indigo-100 text-2xl font-normal font-['K2D'] leading-tight whitespace-nowrap border-b-[3px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-300 ${
+                        active ? "border-purple-500" : "border-transparent"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+        </div>
+      )}
+
+      <main className="max-w-5xl mx-auto px-4 pt-10 pb-24 gap-8 md:px-6 md:pt-16 md:pb-20 md:gap-12 flex flex-col items-center">
         {/* Headline */}
         <div className={`flex flex-col items-center gap-1 text-center ${enter()}`}>
-          <h1 className="text-indigo-100 text-3xl font-semibold font-['K2D'] leading-10 [text-shadow:_0px_4px_4px_rgb(0_0_0_/_0.25)]">
+          <h1 className="text-indigo-100 text-[15px] md:text-3xl font-semibold font-['K2D'] leading-10 [text-shadow:_0px_4px_4px_rgb(0_0_0_/_0.25)]">
             System Overview
           </h1>
-          <p className="text-zinc-300 text-base font-normal font-['K2D'] leading-6">
+          <p className="text-zinc-300 text-[8px] md:text-base font-normal font-['K2D'] leading-6">
             Welcome back. Your AI-automated campaigns are running at peak efficiency.
           </p>
           {userEmail && (
-            <div className="mt-1 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/60 outline outline-1 outline-slate-700/50 backdrop-blur-sm">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span className="text-zinc-300 text-xs font-medium font-['K2D']">
+            <div className="mt-1 inline-flex items-center gap-2 px-3 py-1 max-w-full rounded-full bg-slate-800/60 outline outline-1 outline-slate-700/50 backdrop-blur-sm">
+              <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-emerald-400" />
+              <span className="min-w-0 truncate text-zinc-300 text-xs font-medium font-['K2D']">
                 Signed in as {userEmail}
               </span>
             </div>
@@ -261,7 +403,7 @@ export default function Dashboard() {
             </div>
             {/* Addition 1: show a real error/retry state instead of a bare number when the load truly failed. */}
             {loadError ? (
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3">
                 <span className="text-red-300 text-sm font-medium font-['K2D']">
                   Couldn't load usage data.
                 </span>
@@ -273,7 +415,7 @@ export default function Dashboard() {
                 </button>
               </div>
             ) : (
-              <div className="text-indigo-100 text-3xl font-semibold font-['K2D'] leading-10">
+              <div className="text-indigo-100 text-[32px] md:text-3xl font-semibold font-['K2D'] leading-10">
                 {loading ? "..." : `${Math.max(0, totalCampaigns ?? 0)} / ${campaignLimit > 0 ? campaignLimit : 7}`}
               </div>
             )}
@@ -282,7 +424,7 @@ export default function Dashboard() {
           {/* Recent Campaigns + Quick Actions */}
           <div className={`w-full grid grid-cols-1 md:grid-cols-[1fr_320px] gap-6 ${enter("delay-200")}`}>
             {/* Recent Campaigns table */}
-            <div className={`flex flex-col gap-4 ${cardClass}`}>
+            <div className={`min-w-0 flex flex-col gap-4 p-4 md:p-6 ${cardBase}`}>
               <div className="flex justify-between items-center">
                 <span className="text-indigo-100 text-lg font-semibold font-['K2D']">
                   Recent Campaigns
@@ -295,53 +437,56 @@ export default function Dashboard() {
                 </button>
               </div>
 
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="text-zinc-300 text-xs font-semibold font-['K2D'] uppercase tracking-wide">
-                    <th className="pb-2">Campaign Name</th>
-                    <th className="pb-2">Platform</th>
-                    <th className="pb-2">Date</th>
-                    <th className="pb-2 text-right">Status</th>
-                    <th className="pb-2 text-right">Download</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan={5} className="py-6 text-center text-zinc-400 font-['K2D'] text-sm">
-                        Loading campaigns...
-                      </td>
+              {/* Mobile: table scrolls inside the card so the page never scrolls sideways */}
+              <div className="overflow-x-auto md:overflow-visible">
+                <table className="w-full min-w-[480px] md:min-w-0 text-left">
+                  <thead>
+                    <tr className="text-zinc-300 text-xs font-semibold font-['K2D'] uppercase tracking-wide">
+                      <th className="pb-2">Campaign Name</th>
+                      <th className="pb-2">Platform</th>
+                      <th className="pb-2">Date</th>
+                      <th className="pb-2 text-right">Status</th>
+                      <th className="pb-2 text-right">Download</th>
                     </tr>
-                  ) : recentCampaigns.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="py-6 text-center text-zinc-400 font-['K2D'] text-sm">
-                        No campaigns yet — create your first one to see it here.
-                      </td>
-                    </tr>
-                  ) : (
-                    recentCampaigns.map((c) => (
-                      <tr
-                        key={c.id}
-                        className="border-t border-slate-700/50 hover:bg-slate-700/20 transition-colors"
-                      >
-                        <td className="py-3 text-indigo-100 font-['K2D'] text-sm">{c.name}</td>
-                        <td className="py-3 text-zinc-300 font-['K2D'] text-sm">{c.platform}</td>
-                        <td className="py-3 text-zinc-300 font-['K2D'] text-sm">{c.date}</td>
-                        <td className="py-3 text-right">
-                          <StatusBadge status={c.status} />
-                        </td>
-                        <td className="py-3 text-right">
-                          <DownloadButton campaign={c} />
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan={5} className="py-6 text-center text-zinc-400 font-['K2D'] text-sm">
+                          Loading campaigns...
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : recentCampaigns.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-6 text-center text-zinc-400 font-['K2D'] text-sm">
+                          No campaigns yet — create your first one to see it here.
+                        </td>
+                      </tr>
+                    ) : (
+                      recentCampaigns.map((c) => (
+                        <tr
+                          key={c.id}
+                          className="border-t border-slate-700/50 hover:bg-slate-700/20 transition-colors"
+                        >
+                          <td className="py-3 text-indigo-100 font-['K2D'] text-sm">{c.name}</td>
+                          <td className="py-3 text-zinc-300 font-['K2D'] text-sm">{c.platform}</td>
+                          <td className="py-3 text-zinc-300 font-['K2D'] text-sm">{c.date}</td>
+                          <td className="py-3 text-right">
+                            <StatusBadge status={c.status} />
+                          </td>
+                          <td className="py-3 text-right">
+                            <DownloadButton campaign={c} />
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
-            {/* Quick Actions */}
-            <div className={`quick-actions-card flex flex-col gap-4 ${cardClass}`}>
+            {/* Quick Actions — shown above Recent Campaigns on mobile (per Figma) */}
+            <div className={`quick-actions-card order-first md:order-none flex flex-col gap-4 ${cardClass}`}>
               <span className="text-indigo-100 text-sm font-medium font-['K2D'] uppercase tracking-wide">
                 Quick Actions
               </span>
@@ -416,7 +561,7 @@ export default function Dashboard() {
       {/* Donate — fixed bottom-right, Dashboard only */}
       <button
         onClick={() => setDonationOpen(true)}
-        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-5 py-3 rounded-full bg-gradient-to-r from-purple-500 to-fuchsia-500 text-white text-sm font-semibold font-['K2D'] shadow-[0_8px_24px_-4px_rgba(168,85,247,0.5)] hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-4px_rgba(168,85,247,0.6)] transition-all duration-200 active:scale-[0.97]"
+        className="donate-jiggle fixed bottom-4 right-4 md:bottom-6 md:right-6 z-40 flex items-center gap-2 px-5 py-3 rounded-full bg-gradient-to-r from-purple-500 to-fuchsia-500 text-white text-sm font-semibold font-['K2D'] shadow-[0_8px_24px_-4px_rgba(168,85,247,0.5)] hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-4px_rgba(168,85,247,0.6)] transition-all duration-200 active:scale-[0.97]"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M12 21C12 21 4 15.5 4 9.5C4 6.5 6.3 4.5 9 4.5C10.5 4.5 11.5 5.2 12 6C12.5 5.2 13.5 4.5 15 4.5C17.7 4.5 20 6.5 20 9.5C20 15.5 12 21 12 21Z" fill="white" />

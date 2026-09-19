@@ -4,6 +4,9 @@ import DonationThanks from "./DonationThanks";
 import { downloadImageFromUrl } from "../services/formUtils";
 import { openDonationCheckout } from "../services/donationService";
 
+// Responsive: base classes = mobile (Figma "Campaign - 21"); `md:` = the
+// original desktop values, unchanged. The mobile header + drawer come from the
+// shared <Navbar />, which already renders its own mobile header below md.
 export default function CampaignPreview({ campaignResult, onRedo, onConfirmed, onBack }) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState(null);
@@ -51,24 +54,24 @@ export default function CampaignPreview({ campaignResult, onRedo, onConfirmed, o
   }
 
   return (
-    <div className="min-h-screen w-full bg-slate-900">
+    <div className="min-h-screen w-full bg-[#000b2e] md:bg-slate-900">
       <Navbar />
 
-      <main className="max-w-5xl mx-auto px-6 pt-14 pb-16 flex flex-col gap-8">
+      <main className="max-w-5xl mx-auto px-4 pt-4 pb-12 gap-3 md:px-6 md:pt-14 md:pb-16 md:gap-8 flex flex-col">
         {/* Donation banner */}
-        <section className="bg-gray-800 rounded-xl outline outline-1 outline-offset-[-1px] outline-neutral-600 p-8 flex flex-col items-center gap-4 text-center">
+        <section className="bg-gray-800 rounded-xl outline outline-1 outline-offset-[-1px] outline-neutral-600 p-4 md:p-8 flex flex-col items-center gap-3 md:gap-4 text-center">
           <div className="relative">
-            <p className="text-white text-2xl font-normal font-['Poppins']">
+            <p className="text-white text-xs md:text-2xl font-normal font-['Poppins']">
               The project isn&apos;t finished. The journey is just beginning.
             </p>
             <p
               aria-hidden="true"
-              className="absolute inset-0 text-white/10 text-2xl font-normal font-['Poppins'] blur-[2px] select-none"
+              className="absolute inset-0 text-white/10 text-xs md:text-2xl font-normal font-['Poppins'] blur-[2px] select-none"
             >
               The project isn&apos;t finished. The journey is just beginning.
             </p>
           </div>
-          <p className="text-white text-xl font-normal font-['Poppins'] max-w-2xl">
+          <p className="text-white text-xs md:text-xl font-normal font-['Poppins'] max-w-2xl">
             Help us continue building <span className="font-extrabold">UPDO AI</span> - smarter
             marketing tools for creators, businesses, and dreamers around the world.
           </p>
@@ -76,7 +79,7 @@ export default function CampaignPreview({ campaignResult, onRedo, onConfirmed, o
             type="button"
             onClick={handleDonate}
             disabled={isDonating}
-            className="px-9 py-3.5 bg-violet-900/20 rounded-full text-white text-xl font-normal font-['Poppins'] hover:bg-violet-900/30 transition-colors disabled:opacity-60"
+            className="h-11 w-[150px] md:h-auto md:w-auto md:px-9 md:py-3.5 bg-violet-900/20 rounded-full outline outline-1 outline-offset-[-1px] outline-purple-300/30 md:outline-0 text-white text-xs md:text-xl font-normal font-['Poppins'] hover:bg-violet-900/30 transition-colors disabled:opacity-60"
           >
             {isDonating ? "Opening..." : "Donate Now !"}
           </button>
@@ -89,12 +92,29 @@ export default function CampaignPreview({ campaignResult, onRedo, onConfirmed, o
         </section>
 
         {/* Preview */}
-        <section className="bg-gray-800 rounded-xl outline outline-1 outline-offset-[-1px] outline-neutral-600 p-8 flex flex-col items-center gap-6">
-          <h2 className="text-indigo-100 text-2xl font-semibold font-['K2D'] leading-8">
+        <section className="bg-gray-800 rounded-xl outline outline-1 outline-offset-[-1px] outline-neutral-600 p-4 md:p-8 flex flex-col items-center gap-4 md:gap-6">
+          <h2 className="flex items-center gap-2 text-indigo-100 text-xs md:text-2xl font-semibold font-['K2D'] leading-8">
+            <svg
+              className="md:hidden"
+              width="20"
+              height="14"
+              viewBox="0 0 24 16"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path
+                d="M12 1C7 1 2.7 4.1 1 8c1.7 3.9 6 7 11 7s9.3-3.1 11-7c-1.7-3.9-6-7-11-7Z"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinejoin="round"
+              />
+              <circle cx="12" cy="8" r="3.2" stroke="currentColor" strokeWidth="1.6" />
+            </svg>
             Preview
           </h2>
 
-          <div className="w-full aspect-[4/3] max-h-[600px] bg-slate-900 rounded-xl outline outline-1 outline-offset-[-1px] outline-neutral-600 overflow-hidden flex items-center justify-center">
+          <div className="w-full aspect-square md:aspect-[4/3] max-h-[600px] bg-slate-900 rounded-xl outline outline-1 outline-offset-[-1px] outline-neutral-600 overflow-hidden flex items-center justify-center">
             {isReady ? (
               <img
                 src={imageUrl}
@@ -120,7 +140,7 @@ export default function CampaignPreview({ campaignResult, onRedo, onConfirmed, o
           <button
             type="button"
             onClick={onRedo}
-            className="flex items-center gap-3 px-6 h-14 rounded-full outline outline-1 outline-offset-[-1px] outline-neutral-600 text-indigo-100 text-base font-normal font-['Poppins'] hover:bg-slate-800/50 transition-colors"
+            className="flex items-center gap-2 md:gap-3 px-4 md:px-6 h-12 md:h-14 rounded-full outline outline-1 outline-offset-[-1px] outline-neutral-600 text-indigo-100 text-sm md:text-base font-normal font-['Poppins'] hover:bg-slate-800/50 transition-colors"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M3.825 9L9.425 14.6L8 16L0 8L8 0L9.425 1.4L3.825 7H16V9H3.825Z" fill="#DAE2FD" />
@@ -132,9 +152,9 @@ export default function CampaignPreview({ campaignResult, onRedo, onConfirmed, o
             type="button"
             onClick={handleConfirm}
             disabled={!isReady || isDownloading}
-            className="group flex items-center gap-3 px-6 h-14 bg-purple-300 rounded-full shadow-[0px_10px_15px_-3px_rgba(208,188,255,0.20)] hover:bg-purple-200 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 disabled:opacity-60 disabled:hover:scale-100"
+            className="group flex items-center gap-2 md:gap-3 px-4 md:px-6 h-12 md:h-14 bg-purple-300 rounded-full shadow-[0px_10px_15px_-3px_rgba(208,188,255,0.20)] hover:bg-purple-200 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 disabled:opacity-60 disabled:hover:scale-100"
           >
-            <span className="text-violet-900 text-base font-normal font-['Poppins']">
+            <span className="text-violet-900 text-sm md:text-base font-normal font-['Poppins']">
               {isDownloading ? "Downloading..." : "Confirm"}
             </span>
             {!isDownloading && (

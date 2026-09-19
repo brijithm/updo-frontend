@@ -1,10 +1,10 @@
 import React, { useRef, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import logo from "../assets/logo.png";
 import linkedinIcon from "../assets/LinkedIn.svg";
 import instagramIcon from "../assets/Instagram.svg";
 import xIcon from "../assets/X.svg";
 import facebookIcon from "../assets/Facebook.svg";
-import whatsappIcon from "../assets/WhatsApp.svg";
 import { Link } from "react-router-dom";
 import { getApprovedReviews, submitReview } from "../services/reviewservice_temp";
 
@@ -101,7 +101,21 @@ function PenIcon({ className = "w-4 h-4" }) {
   );
 }
 
+// True below Tailwind's `sm` breakpoint (< 640px). Desktop/tablet layout is untouched.
+function useIsMobile() {
+  const query = "(max-width: 639px)";
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.matchMedia(query).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const onChange = (e) => setIsMobile(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  return isMobile;
+}
+
 function ReviewCarousel() {
+  const isMobile = useIsMobile();
   const [reviews, setReviews] = useState([]);
   const [isHovering, setIsHovering] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
@@ -211,65 +225,73 @@ function ReviewCarousel() {
     return () => window.removeEventListener("keydown", onKey);
   }, [expandedReview, formOpen]);
 
-  return (
-    <div className="w-full">
-      <div
-        className="relative w-full overflow-x-hidden overflow-y-visible"
-        style={{
-          WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)",
-          maskImage: "linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)",
-        }}
-        onMouseEnter={() => setIsHovering(true)}
-        onMouseLeave={() => setIsHovering(false)}
-      >
-        <div ref={trackRef} className="flex items-center py-2" style={{ willChange: "transform" }}>
-          {track.map((review, i) => {
-            const key = `${review.id}-${i}`;
+  // Scrolling reviews row (shared by desktop + mobile; only the card markup differs on mobile).
+  const trackEl = (
+    <div
+      className="relative w-full overflow-x-hidden overflow-y-visible"
+      style={{
+        WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)",
+        maskImage: "linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)",
+      }}
+      onMouseEnter={isMobile ? undefined : () => setIsHovering(true)}
+      onMouseLeave={isMobile ? undefined : () => setIsHovering(false)}
+    >
+      <div ref={trackRef} className="flex items-center py-2" style={{ willChange: "transform" }}>
+        {track.map((review, i) => {
+          const key = `${review.id}-${i}`;
+
+          if (isMobile) {
             return (
               <div
                 key={key}
-                className="review-capsule flex-shrink-0 mr-5 w-[260px] sm:w-[300px] rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm px-5 py-4 transition-colors duration-300 ease-out hover:border-white/20 hover:bg-white/[0.07]"
+                onClick={() => setExpandedReview(review)}
+                className="flex-shrink-0 mr-3 w-[220px] cursor-pointer rounded-2xl border border-white/10 bg-white/5 px-3 py-2"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-afacad text-sm sm:text-base text-white">{review.name}</p>
-                    <p className="font-afacad text-xs text-white/50">{review.business}</p>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-afacad text-xs text-white truncate">{review.name}</p>
+                    <p className="font-afacad text-[10px] text-white/50 truncate">{review.business}</p>
                   </div>
-                  <Stars value={review.rating} size="text-xs sm:text-sm" />
+                  <Stars value={review.rating} size="text-[10px]" />
                 </div>
-
-                <div className="mt-3">
-                  <p className="font-afacad text-xs sm:text-sm text-white/70 leading-relaxed clamp-3">{review.text}</p>
-                </div>
-
-                <button
-                  onClick={() => setExpandedReview(review)}
-                  className="mt-3 inline-flex items-center gap-1 rounded-full bg-[rgba(102,51,153,0.35)] hover:bg-[rgba(102,51,153,0.55)] px-3 py-1 text-[11px] sm:text-xs text-white/90 transition-colors duration-200"
-                >
-                  Read full ⤢
-                </button>
+                <p className="font-afacad mt-1 text-[11px] text-white/70 leading-snug clamp-2">{review.text}</p>
               </div>
             );
-          })}
-        </div>
-      </div>
+          }
 
-      {/* Tap to Review pill — sits below the row, outside the capsule track */}
-      <div className="mt-6 flex items-center justify-center">
-        <div className="relative border border-white/15 shadow-2xl rounded-full px-6 py-3 bg-[#0F1233]/90 backdrop-blur-md flex items-center justify-center">
-          {justSubmitted ? (
-            <p className="font-afacad text-base sm:text-lg text-white">Thanks for your review ✓</p>
-          ) : (
-            <button onClick={openReviewForm} className="font-afacad flex items-center gap-2 text-base sm:text-lg text-white">
-              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/85">
-                <PenIcon className="w-3.5 h-3.5 text-[#1a1a2e]" />
-              </span>
-              Tap to Review
-            </button>
-          )}
-        </div>
-      </div>
+          return (
+            <div
+              key={key}
+              className="review-capsule flex-shrink-0 mr-4 sm:mr-5 w-[210px] sm:w-[260px] md:w-[300px] rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm px-4 py-3 sm:px-5 sm:py-4 transition-colors duration-300 ease-out hover:border-white/20 hover:bg-white/[0.07]"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-afacad text-xs sm:text-sm md:text-base text-white">{review.name}</p>
+                  <p className="font-afacad text-[10px] sm:text-xs text-white/50">{review.business}</p>
+                </div>
+                <Stars value={review.rating} size="text-[10px] sm:text-xs md:text-sm" />
+              </div>
 
+              <div className="mt-2 sm:mt-3">
+                <p className="font-afacad text-xs sm:text-sm text-white/70 leading-relaxed clamp-3">{review.text}</p>
+              </div>
+
+              <button
+                onClick={() => setExpandedReview(review)}
+                className="mt-2 sm:mt-3 inline-flex items-center gap-1 rounded-full bg-[rgba(102,51,153,0.35)] hover:bg-[rgba(102,51,153,0.55)] px-2.5 py-1 sm:px-3 text-[10px] sm:text-[11px] md:text-xs text-white/90 transition-colors duration-200"
+              >
+                Read full ⤢
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  // Write-review popup + full-review popup (identical on desktop and mobile).
+  const modals = (
+    <>
       {formOpen && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-[#000B2E]/70 backdrop-blur-md px-4 modal-fade"
@@ -281,19 +303,19 @@ function ReviewCarousel() {
             size={320}
             lift={false}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-md bg-[#0F1233] shadow-[0_0_90px_-10px_rgba(102,51,153,0.6)] px-7 py-8 sm:px-10 sm:py-10 modal-pop"
+            className="relative w-full max-w-md bg-[#0F1233] shadow-[0_0_90px_-10px_rgba(102,51,153,0.6)] px-5 py-6 sm:px-10 sm:py-10 modal-pop"
           >
             <button
               onClick={() => setFormOpen(false)}
               aria-label="Close"
-              className="absolute top-5 right-5 w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors duration-200"
+              className="absolute top-4 right-4 sm:top-5 sm:right-5 w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors duration-200"
             >
               ✕
             </button>
 
-            <form onSubmit={handleSubmitReview} className="w-full flex flex-col gap-4">
-              <p className="font-afacad text-lg sm:text-xl text-white">Your Review</p>
-              <Stars value={formRating} onChange={setFormRating} size="text-xl" />
+            <form onSubmit={handleSubmitReview} className="w-full flex flex-col gap-3 sm:gap-4">
+              <p className="font-afacad text-base sm:text-lg md:text-xl text-white">Your Review</p>
+              <Stars value={formRating} onChange={setFormRating} size="text-lg sm:text-xl" />
               <input
                 type="text"
                 value={formName}
@@ -341,31 +363,102 @@ function ReviewCarousel() {
             size={380}
             lift={false}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-xl bg-[#0F1233] shadow-[0_0_90px_-10px_rgba(102,51,153,0.6)] px-7 py-8 sm:px-10 sm:py-10 modal-pop"
+            className="relative w-full max-w-xl bg-[#0F1233] shadow-[0_0_90px_-10px_rgba(102,51,153,0.6)] px-5 py-6 sm:px-10 sm:py-10 modal-pop"
           >
             <button
               onClick={() => setExpandedReview(null)}
               aria-label="Close"
-              className="absolute top-5 right-5 w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors duration-200"
+              className="absolute top-4 right-4 sm:top-5 sm:right-5 w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors duration-200"
             >
               ✕
             </button>
 
-            <div className="flex items-start justify-between gap-3 pr-12">
+            <div className="flex items-start justify-between gap-3 pr-10 sm:pr-12">
               <div>
-                <p className="font-afacad text-lg sm:text-xl text-white">{expandedReview.name}</p>
-                <p className="font-afacad text-sm text-white/50">{expandedReview.business}</p>
+                <p className="font-afacad text-base sm:text-lg md:text-xl text-white">{expandedReview.name}</p>
+                <p className="font-afacad text-xs sm:text-sm text-white/50">{expandedReview.business}</p>
               </div>
-              <Stars value={expandedReview.rating} size="text-base sm:text-lg" />
+              <Stars value={expandedReview.rating} size="text-sm sm:text-base md:text-lg" />
             </div>
 
-            <p className="font-afacad mt-6 text-base sm:text-lg text-white/80 leading-relaxed max-h-[55vh] overflow-y-auto pr-1">
+            <p className="font-afacad mt-4 sm:mt-6 text-sm sm:text-base md:text-lg text-white/80 leading-relaxed max-h-[55vh] overflow-y-auto pr-1">
               {expandedReview.text}
             </p>
           </GlowBorder>
         </div>
       )}
-    </div>
+    </>
+  );
+
+  /* ---------- MOBILE: two capsules (scrolling reviews + write review) ---------- */
+  if (isMobile) {
+    return (
+      <div className="py-4 flex flex-col gap-4">
+        <GlowBorder
+          radius="9999px"
+          size={300}
+          lift={false}
+          className="w-full min-h-[92px] flex items-center overflow-hidden border border-white/10 bg-gradient-to-r from-[rgba(15,24,51,0.35)] to-[rgba(10,19,48,0.35)]"
+        >
+          {trackEl}
+        </GlowBorder>
+
+        <GlowBorder
+          as="button"
+          type="button"
+          onClick={openReviewForm}
+          radius="9999px"
+          size={300}
+          className="w-full min-h-[92px] flex flex-col items-center justify-center gap-1 border border-white/10 bg-gradient-to-r from-[rgba(15,24,51,0.35)] to-[rgba(10,19,48,0.35)]"
+        >
+          {justSubmitted ? (
+            <span className="font-afacad text-sm text-white">Thanks for your review ✓</span>
+          ) : (
+            <>
+              <span className="font-afacad text-sm text-white">Write Your Review Here...</span>
+              <span className="font-afacad text-[10px] text-white/50">It Helps Us to Improve</span>
+            </>
+          )}
+        </GlowBorder>
+
+        {/* Portal: the fade-up transform on the parent section would otherwise trap `fixed` popups */}
+        {createPortal(modals, document.body)}
+      </div>
+    );
+  }
+
+  /* ---------- DESKTOP: unchanged ---------- */
+  return (
+    <GlowBorder
+      size={420}
+      lift={false}
+      className="mx-auto max-w-[1338px] py-8 sm:py-14 md:py-16 border border-white/10 bg-gradient-to-r from-[rgba(15,24,51,0.35)] to-[rgba(10,19,48,0.35)]"
+    >
+      <div className="px-3 sm:px-8">
+        <p className="font-afacad text-center text-sm sm:text-lg md:text-xl text-white/70 mb-4 sm:mb-6">Loved by small businesses like yours</p>
+        <div className="w-full">
+          {trackEl}
+
+          {/* Tap to Review pill — sits below the row, outside the capsule track */}
+          <div className="mt-4 sm:mt-6 flex items-center justify-center">
+            <div className="relative border border-white/15 shadow-2xl rounded-full px-4 py-2.5 sm:px-6 sm:py-3 bg-[#0F1233]/90 backdrop-blur-md flex items-center justify-center">
+              {justSubmitted ? (
+                <p className="font-afacad text-sm sm:text-base md:text-lg text-white">Thanks for your review ✓</p>
+              ) : (
+                <button onClick={openReviewForm} className="font-afacad flex items-center gap-2 text-sm sm:text-base md:text-lg text-white">
+                  <span className="inline-flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white/85">
+                    <PenIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#1a1a2e]" />
+                  </span>
+                  Tap to Review
+                </button>
+              )}
+            </div>
+          </div>
+
+          {modals}
+        </div>
+      </div>
+    </GlowBorder>
   );
 }
 
@@ -377,12 +470,13 @@ export default function LandingPage() {
     return () => cancelAnimationFrame(raf);
   }, []);
   return (
-    <div className={`w-full min-h-screen bg-[#000B2E] text-white overflow-hidden ${ready ? "start-anim" : ""}`}>
+    <div className={`w-full min-h-screen bg-[#000B2E] text-white overflow-x-hidden ${ready ? "start-anim" : ""}`}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Afacad+Flux:wght@400;500;600&family=Doto:wght@400;500;600;700&family=Poppins:wght@400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Afacad+Flux:wght@400;500;600&family=Doto:wght@400;500;600;700&family=Poppins:wght@400;500&family=Bitcount+Prop+Single:wght@400;500;600&display=swap');
         .font-afacad { font-family: "Afacad Flux", ui-sans-serif, system-ui, sans-serif; }
         .font-poppins { font-family: "Poppins", ui-sans-serif, system-ui, sans-serif; }
         .font-doto { font-family: "Doto", ui-sans-serif, system-ui, sans-serif; }
+        .font-bitcount { font-family: "Bitcount Prop Single", "Doto", ui-sans-serif, system-ui, sans-serif; }
         .fullstop-box {
           display: inline-block;
           width: 0.10em;
@@ -409,6 +503,12 @@ export default function LandingPage() {
         .clamp-3 {
           display: -webkit-box;
           -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        .clamp-2 {
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
           overflow: hidden;
         }
@@ -444,60 +544,54 @@ export default function LandingPage() {
         }
       `}</style>
 
-      <header className="fade-up fade-up-0 relative flex items-center justify-between px-6 sm:px-10 h-[92px]">
-        <img src={logo} alt="UPDO" className="h-8 sm:h-9 w-auto" />
+      <header className="fade-up fade-up-0 relative flex items-center justify-between px-4 sm:px-10 h-16 sm:h-[92px]">
+        {/* h-7 on mobile (was h-6) to match Figma's ~28px mobile logo */}
+        <img src={logo} alt="UPDO" className="h-7 sm:h-8 md:h-9 w-auto" />
 
-        <nav className="flex items-center gap-6 sm:gap-8 font-afacad">
-          <Link to="/login" className="text-lg sm:text-xl text-[#F5F5F5] hover:opacity-80 transition-opacity duration-300">Log In</Link>
-          <GlowBorder as={Link} to="/login" size={140} className="rounded-full px-6 py-2.5 text-lg sm:text-xl text-[#F5F5F5]/80 bg-[rgba(102,51,153,0.20)] hover:bg-[rgba(102,51,153,0.32)]">Get Started</GlowBorder>
+        <nav className="flex items-center gap-3 sm:gap-6 md:gap-8 font-afacad">
+          <Link to="/login" className="text-sm sm:text-lg md:text-xl text-[#F5F5F5] hover:opacity-80 transition-opacity duration-300">Log In</Link>
+          <GlowBorder as={Link} to="/login" size={140} className="rounded-full px-4 py-2 sm:px-6 sm:py-2.5 text-sm sm:text-lg md:text-xl text-[#F5F5F5]/80 bg-[rgba(102,51,153,0.20)] hover:bg-[rgba(102,51,153,0.32)]">Get Started</GlowBorder>
         </nav>
 
         <div aria-hidden="true" className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
       </header>
 
-      <section className="flex flex-col items-center text-center px-6 pt-12 sm:pt-16 pb-16">
-        <h1 className="fade-up fade-up-1 font-doto text-[40px] sm:text-[56px] lg:text-[72px] leading-[1.15] max-w-4xl">
+      {/* pt-10 on mobile (was pt-8) to tighten header→heading gap to match Figma */}
+      <section className="flex flex-col items-center text-center px-4 sm:px-6 pt-10 sm:pt-16 pb-10 sm:pb-16">
+        <h1 className="fade-up fade-up-1 font-bitcount sm:font-doto text-[32px] sm:text-[56px] lg:text-[72px] leading-[1.2] sm:leading-[1.15] max-w-[320px] sm:max-w-4xl mx-auto">
           Marketing content
           <br />
           in seconds<span className="fullstop-box" /> 
         </h1>
 
-        <p className="fade-up fade-up-2 font-doto mt-8 max-w-3xl text-[#F5F7FA] text-base sm:text-lg lg:text-xl leading-relaxed">
+        {/* mt-4 on mobile (was mt-5) to tighten heading→subtitle gap to match Figma */}
+        <p className="fade-up fade-up-2 font-bitcount sm:font-doto mt-4 sm:mt-8 max-w-[300px] sm:max-w-3xl mx-auto text-white/80 sm:text-[#F5F7FA] text-xs sm:text-lg lg:text-xl leading-relaxed">
           AI-powered posters, captions &amp; scheduling planner for small businesses <span className="fullstop-box" /> No design skills needed <span className="fullstop-box" />
         </p>
 
-        <div className="fade-up fade-up-3 mt-10 flex flex-col sm:flex-row items-center gap-4 font-afacad">
-          <GlowBorder as={Link} to="/login" size={260} className="px-10 py-4 text-lg sm:text-xl text-[#F5F7FA] bg-[rgba(102,51,153,0.80)] hover:bg-[rgba(102,51,153,0.95)]">Start Creating Today</GlowBorder>
-          <GlowBorder as={Link} to="/demo" size={200} className="px-10 py-4 text-lg sm:text-xl text-[#F5F5F5] bg-[rgba(102,51,153,0.20)] hover:bg-[rgba(102,51,153,0.32)]">Watch Demo</GlowBorder>
+        <div className="fade-up fade-up-3 mt-6 sm:mt-10 flex flex-row flex-wrap items-center justify-center gap-3 sm:gap-4 font-afacad">
+          <GlowBorder as={Link} to="/login" size={260} className="whitespace-nowrap px-5 py-2.5 sm:px-10 sm:py-4 text-xs sm:text-lg lg:text-xl text-[#F5F7FA] bg-[rgba(102,51,153,0.80)] hover:bg-[rgba(102,51,153,0.95)]">Start Creating Today</GlowBorder>
+          <GlowBorder as={Link} to="/demo" size={200} className="whitespace-nowrap px-5 py-2.5 sm:px-10 sm:py-4 text-xs sm:text-lg lg:text-xl text-[#F5F5F5] bg-[rgba(102,51,153,0.20)] hover:bg-[rgba(102,51,153,0.32)]">Watch Demo</GlowBorder>
         </div>
       </section>
 
-      <section className="fade-up fade-up-4 px-6 sm:px-10 pb-24">
-        <GlowBorder
-          size={420}
-          lift={false}
-          className="mx-auto max-w-[1338px] py-14 sm:py-16 border border-white/10 bg-gradient-to-r from-[rgba(15,24,51,0.35)] to-[rgba(10,19,48,0.35)]"
-        >
-          <div className="px-4 sm:px-8">
-            <p className="font-afacad text-center text-lg sm:text-xl text-white/70 mb-6">Loved by small businesses like yours</p>
-            <ReviewCarousel />
-          </div>
-        </GlowBorder>
+      <section className="fade-up fade-up-4 px-4 sm:px-10 pb-14 sm:pb-24">
+        <ReviewCarousel />
       </section>
 
-      <footer className="fade-up fade-up-5 px-6 sm:px-10 pb-20">
-        <div className="mx-auto max-w-[1338px] flex flex-col items-center gap-10">
-          <p className="font-afacad self-start text-lg sm:text-xl text-[#F5F7FA]">Contact Us:</p>
+      <footer className="fade-up fade-up-5 px-4 sm:px-10 pb-10 sm:pb-20">
+        <div className="mx-auto max-w-[1338px] flex flex-col items-center gap-6 sm:gap-10">
+          <p className="font-afacad self-start text-sm sm:text-lg md:text-xl text-[#F5F7FA]">Contact Us:</p>
 
-          <div className="flex items-center gap-6 sm:gap-8">
+          <div className="flex items-center gap-4 sm:gap-6 md:gap-8">
             {socials.map(({ icon, label, href }) => (
               <a key={label} href={href} aria-label={label} className="opacity-60 hover:opacity-100 hover:-translate-y-0.5 transition-all duration-300 ease-out">
-                <img src={icon} alt={label} className="w-9 h-9 sm:w-10 sm:h-10" />
+                <img src={icon} alt={label} className="w-7 h-7 sm:w-9 sm:h-9 md:w-10 md:h-10" />
               </a>
             ))}
           </div>
 
-          <p className="font-afacad text-sm sm:text-base text-white/50 text-center">
+          <p className="font-afacad text-[10px] sm:text-sm md:text-base text-white/50 text-center">
             <Link to="/privacy-policy" className="hover:text-white/70 transition-colors duration-300">Privacy Policy</Link>
             {" "}|{" "}
             <Link to="/terms" className="hover:text-white/70 transition-colors duration-300">Terms &amp; Conditions</Link>
