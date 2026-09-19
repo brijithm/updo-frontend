@@ -675,25 +675,28 @@ export default function BrandSettings() {
           </p>
 
           {["primary", "secondary", "accent"].map((key) => (
-            <div key={key} className="flex items-center justify-between gap-3">
-              <span className="text-white text-xs font-['Poppins'] capitalize w-20 shrink-0">{key} :</span>
-              <div className="flex items-center gap-2 flex-1">
-                <input
-                  type="text"
-                  name={key}
-                  value={colors[key]}
-                  onChange={handleColorChange}
-                  disabled={isLocked}
-                  placeholder="Hex Code"
-                  className="flex-1 min-w-0 h-9 px-3 bg-slate-950 rounded-lg outline outline-1 outline-offset-[-1px] outline-neutral-600 text-white text-xs font-['Poppins'] placeholder:text-white/40 focus:outline-purple-300"
-                />
-                <div
-                  className="w-7 h-7 rounded-md outline outline-1 outline-offset-[-1px] outline-neutral-600 shrink-0"
-                  style={{ backgroundColor: colors[key] || "transparent" }}
-                />
-              </div>
+          <div key={key} className="flex items-center gap-3">
+            <span className="text-white text-xs font-['Poppins'] capitalize w-[76px] shrink-0">
+              {key} :
+            </span>
+            <div className="flex flex-1 min-w-0 items-center justify-end gap-2">
+              <input
+                type="text"
+                name={key}
+                value={colors[key]}
+                onChange={handleColorChange}
+                disabled={isLocked}
+                placeholder="Hex Code"
+                maxLength={9}
+                className="w-0 flex-1 min-w-0 max-w-[9.5rem] h-9 px-2.5 bg-slate-950 rounded-lg outline outline-1 outline-offset-[-1px] outline-neutral-600 text-white text-xs font-['Poppins'] placeholder:text-white/40 focus:outline-purple-300"
+              />
+              <div
+                className="w-7 h-7 rounded-md outline outline-1 outline-offset-[-1px] outline-neutral-600 shrink-0"
+                style={{ backgroundColor: colors[key] || "transparent" }}
+              />
             </div>
-          ))}
+          </div>
+        ))}
         </section>
 
         {/* Social Media Links — own section on mobile, per the Anima design
