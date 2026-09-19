@@ -29,8 +29,9 @@ export default function Navbar() {
     }
   }, [location.pathname]);
 
-  // MOBILE ONLY: burger drawer state + smooth open/close (transition-based —
-  // the exit animation plays before the drawer unmounts, no snap-close).
+  // MOBILE ONLY: burger drawer state + smooth open/close.
+  // Open: keyframe slide-in + staggered link entrance (same as Dashboard's drawer).
+  // Close: transition plays before the drawer unmounts, no snap-close.
   const [menuOpen, setMenuOpen] = useState(false);
   const [closing, setClosing] = useState(false);
 
@@ -58,6 +59,30 @@ export default function Navbar() {
 
   return (
     <>
+      {/* MOBILE ONLY: drawer open animations. No fill-mode on the panel/backdrop
+          so the closing transition below can still move them. */}
+      <style>{`
+        @keyframes navDrawerFade {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        @keyframes navDrawerSlideIn {
+          from { transform: translateX(100%); }
+          to   { transform: translateX(0); }
+        }
+        @keyframes navDrawerItemIn {
+          from { opacity: 0; transform: translateX(40px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+        .nav-drawer-backdrop { animation: navDrawerFade 250ms ease-out; }
+        .nav-drawer-panel    { animation: navDrawerSlideIn 350ms cubic-bezier(0.22, 1, 0.36, 1); }
+        .nav-drawer-item     { animation: navDrawerItemIn 450ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+        @media (prefers-reduced-motion: reduce) {
+          .nav-drawer-backdrop, .nav-drawer-panel, .nav-drawer-item { animation: none; }
+        }
+      `}</style>
+
       {/* ===================================================================
           DESKTOP / TABLET (md and up) — original floating pill nav, untouched.
           =================================================================== */}
@@ -120,7 +145,7 @@ export default function Navbar() {
       {(menuOpen || closing) && (
         <div className="md:hidden fixed inset-0 z-50">
           <div
-            className={`absolute inset-0 bg-black/50 transition-opacity duration-300 ${
+            className={`nav-drawer-backdrop absolute inset-0 bg-black/50 transition-opacity duration-300 ${
               closing ? "opacity-0" : "opacity-100"
             }`}
             onClick={closeMenu}
@@ -129,7 +154,7 @@ export default function Navbar() {
           <nav
             id="mobile-navigation"
             aria-label="Main navigation"
-            className={`absolute right-0 top-0 h-full w-[218px] max-w-[80vw] bg-[#00061f] border-l border-slate-700/40 shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+            className={`nav-drawer-panel absolute right-0 top-0 h-full w-[218px] max-w-[80vw] bg-[#00061f] border-l border-slate-700/40 shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
               closing ? "translate-x-full" : "translate-x-0"
             }`}
           >
@@ -145,8 +170,12 @@ export default function Navbar() {
             </button>
 
             <ul className="pt-[111px] pl-6 pr-4 flex flex-col items-start gap-5">
-              {NAV_LINKS.map((link) => (
-                <li key={link.to}>
+              {NAV_LINKS.map((link, i) => (
+                <li
+                  key={link.to}
+                  className="nav-drawer-item"
+                  style={{ animationDelay: `${180 + i * 70}ms` }}
+                >
                   <NavLink
                     to={link.to}
                     onClick={closeMenu}
