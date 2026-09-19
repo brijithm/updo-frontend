@@ -604,25 +604,14 @@ export default function BrandSettings() {
             placeholder="e.g. UPDO AI"
           />
 
-          {/* MOBILE ONLY: dropdown per the Anima design (desktop keeps its text input). */}
-          <div className="flex flex-col gap-1.5 w-full">
-            <label htmlFor="m-category" className="text-zinc-300 text-[11px] font-semibold font-['Poppins'] uppercase tracking-wide">
-              Category
-            </label>
-            <select
-              id="m-category"
-              name="category"
-              value={form.category}
-              onChange={handleFieldChange}
-              disabled={isLocked}
-              className="w-full h-11 px-3 bg-slate-950 rounded-lg outline outline-1 outline-offset-[-1px] outline-neutral-600 text-indigo-100 text-xs font-['Poppins'] focus:outline-purple-300 disabled:cursor-not-allowed"
-            >
-              <option value="" />
-              {MOBILE_CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-          </div>
+          <MobileFormField
+  label="Category"
+  name="category"
+  value={form.category}
+  onChange={handleFieldChange}
+  disabled={isLocked}
+  placeholder="e.g. SaaS, Retail, Food"
+/>
 
           {/* Niche — present on desktop, missing from the Anima mobile design; added here to match. */}
           <MobileFormField
