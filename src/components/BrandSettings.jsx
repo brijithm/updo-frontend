@@ -605,13 +605,13 @@ export default function BrandSettings() {
           />
 
           <MobileFormField
-  label="Category"
-  name="category"
-  value={form.category}
-  onChange={handleFieldChange}
-  disabled={isLocked}
-  placeholder="e.g. SaaS, Retail, Food"
-/>
+            label="Category"
+            name="category"
+            value={form.category}
+            onChange={handleFieldChange}
+            disabled={isLocked}
+            placeholder="e.g. SaaS, Retail, Food"
+          />
 
           {/* Niche — present on desktop, missing from the Anima mobile design; added here to match. */}
           <MobileFormField
