@@ -5,19 +5,7 @@ import { hasBrandSettings } from "../services/brandService";
 import { getMyCampaigns, getUsageSummary } from "../services/campaignService";
 import { openDonationCheckout } from "../services/donationService";
 import { downloadImageFromUrl } from "../services/formUtils";
-// MOBILE ONLY: copy Anima's `204274-1.png` (the UPDO logo) to src/assets/updo-logo.png
-import updoLogo from "../assets/logo.png";
-
-// MOBILE ONLY: burger-menu drawer items (Figma order + Scheduler).
-// `to: null` = current page (Dashboard) -> just closes the drawer.
-// Adjust paths here if any differ from your Navbar's links.
-const MOBILE_NAV = [
-  { label: "Dashboard", to: null },
-  { label: "Brand Setting", to: "/brand-settings" },
-  { label: "Campaign", to: "/campaign" },   // was "/campaigns"
-  { label: "Scheduler", to: "/scheduler" },
-  { label: "Home", to: "/" },
-];
+import { logout } from "../services/sessionUtils";
 
 function StatusBadge({ status }) {
   const isPublished = status === "Published";
@@ -75,44 +63,27 @@ function DownloadButton({ campaign }) {
   );
 }
 
-// Shared card treatment (padding is set per card so mobile can use less):
-// subtle lift + shadow on hover so the dashboard feels alive without being
-// distracting.
 const cardBase =
   "bg-slate-800/70 rounded-xl outline outline-1 outline-offset-[-1px] outline-slate-700/50 backdrop-blur-[6px] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-purple-950/20";
 const cardClass = `p-6 ${cardBase}`;
 
-// ─────────────────────────────────────────────────────────────
-// Addition 1: small delay helper for retry backoff.
-// ─────────────────────────────────────────────────────────────
+// Small delay helper for retry backoff.
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default function Dashboard() {
   const navigate = useNavigate();
 
-  // Real data from the backend — replaces the old MOCK_RECENT_CAMPAIGNS block.
   const [totalCampaigns, setTotalCampaigns] = useState(0);
   const [campaignLimit, setCampaignLimit] = useState(7);
   const [recentCampaigns, setRecentCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
-  // Addition 1: surfaced instead of silently keeping stale defaults on failure.
   const [loadError, setLoadError] = useState(false);
-
-  // MOBILE ONLY: burger drawer state.
-  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
-    // ─────────────────────────────────────────────────────────
-    // Addition 1: retry with backoff.
-    // WHY: right after email verification the backend can be cold
-    // (Railway spin-down) or the very first request can transiently
-    // fail. Previously a single failed fetch silently left
-    // totalCampaigns/campaignLimit at their React defaults (0/7),
-    // which look like real data but aren't. Now we retry a few times
-    // before giving up, and only then show a real error state.
-    // ─────────────────────────────────────────────────────────
+    // Retry with backoff: right after email verification the backend can be
+    // cold (Railway spin-down) or the first request can transiently fail.
     async function loadDashboardData(attempt = 1) {
       const MAX_ATTEMPTS = 4;
       const RETRY_DELAY_MS = 1000;
@@ -127,10 +98,7 @@ export default function Dashboard() {
 
         setRecentCampaigns(campaigns.slice(0, 5)); // show most recent 5
 
-        // getUsageSummary() -> GET /usage/summary, which already returns
-        // { posts_used, posts_max, posts_remaining, ... } precomputed by
-        // the backend (see app/routes/usage.py: get_usage_summary()). No
-        // need to recompute anything client-side — just read the fields.
+        // GET /usage/summary returns { posts_used, posts_max, posts_remaining, ... }
         setTotalCampaigns(usage.posts_remaining);
         setCampaignLimit(usage.posts_max);
 
@@ -160,45 +128,23 @@ export default function Dashboard() {
     };
   }, []);
 
-  // New Campaign is blocked in two cases:
-  //  1. The user has never saved Brand Settings — UPDO AI needs a brand
-  //     identity before it can generate anything.
+  // New Campaign is blocked when:
+  //  1. The user has never saved Brand Settings.
   //  2. The user has already used all campaign slots on their plan.
   const [brandReady, setBrandReady] = useState(true); // optimistic default while checking
   useEffect(() => {
     hasBrandSettings().then(setBrandReady);
   }, []);
-  // totalCampaigns now holds posts_remaining (counts DOWN, e.g. 7/7 -> 0/7)
+  // totalCampaigns holds posts_remaining (counts DOWN, e.g. 7/7 -> 0/7)
   const limitReached = totalCampaigns <= 0;
   const createBlocked = !brandReady || limitReached;
 
-  // Simple entrance animation: fade + rise, staggered per section.
-  // No extra libraries — just a mount flag driving Tailwind transitions.
+  // Entrance animation: fade + rise, staggered per section.
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     const id = requestAnimationFrame(() => setMounted(true));
     return () => cancelAnimationFrame(id);
   }, []);
-
-  // MOBILE ONLY: close drawer on Escape and lock page scroll while it's open.
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onKey = (e) => {
-      if (e.key === "Escape") setMenuOpen(false);
-    };
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [menuOpen]);
-
-  function handleMobileNav(to) {
-    setMenuOpen(false);
-    if (to) navigate(to);
-  }
 
   // Signed-in user's email, set by authService.js on login.
   const userEmail = localStorage.getItem("updo_user_email");
@@ -236,10 +182,9 @@ export default function Dashboard() {
     }`;
 
   return (
-    <div className="min-h-screen w-full bg-[#000b2e] md:bg-slate-900">
+    <div className="relative min-h-screen w-full bg-[#000b2e] md:bg-slate-900">
       <style>{`
-        /* Quick Actions card: slow, subtle pulsing glow to draw the eye
-           without being distracting. Kept scoped to this card only. */
+        /* Quick Actions card: slow, subtle pulsing glow */
         @keyframes quickActionsGlow {
           0%, 100% { box-shadow: 0 0 0 rgba(168, 85, 247, 0); }
           50% { box-shadow: 0 0 24px rgba(168, 85, 247, 0.12); }
@@ -258,19 +203,7 @@ export default function Dashboard() {
           animation: wandWiggle 0.5s ease-in-out;
         }
 
-        /* MOBILE ONLY: drawer + nav items + donate jiggle */
-        @keyframes backdropFade {
-          from { opacity: 0; }
-          to   { opacity: 1; }
-        }
-        @keyframes drawerSlideIn {
-          from { transform: translateX(100%); }
-          to   { transform: translateX(0); }
-        }
-        @keyframes navItemIn {
-          from { opacity: 0; transform: translateX(40px); }
-          to   { opacity: 1; transform: translateX(0); }
-        }
+        /* MOBILE ONLY: donate jiggle */
         @keyframes donateJiggle {
           0%, 86%, 100% { transform: rotate(0deg); }
           89% { transform: rotate(-7deg); }
@@ -278,9 +211,6 @@ export default function Dashboard() {
           95% { transform: rotate(-4deg); }
           98% { transform: rotate(2deg); }
         }
-        .drawer-backdrop { animation: backdropFade 250ms ease-out both; }
-        .drawer-panel    { animation: drawerSlideIn 350ms cubic-bezier(0.22, 1, 0.36, 1) both; }
-        .drawer-item     { animation: navItemIn 450ms cubic-bezier(0.22, 1, 0.36, 1) both; }
 
         @media (max-width: 767px) {
           .donate-jiggle {
@@ -292,83 +222,12 @@ export default function Dashboard() {
         @media (prefers-reduced-motion: reduce) {
           .quick-actions-card { animation: none; }
           .group:hover .wand-icon { animation: none; }
-          .drawer-backdrop, .drawer-panel, .drawer-item, .donate-jiggle { animation: none; }
+          .donate-jiggle { animation: none; }
         }
       `}</style>
 
-      {/* Desktop/tablet (md+): existing Navbar, untouched. `md:contents` keeps
-          the wrapper from generating a box, so Navbar lays out exactly as before. */}
-      <div className="hidden md:contents">
-        <Navbar />
-      </div>
-
-      {/* MOBILE ONLY (<md): header with logo + burger */}
-      <header className="md:hidden sticky top-0 z-30 h-[66px] w-full flex items-center justify-between px-[15px] bg-[#000b2e]/90 backdrop-blur-md border-b border-slate-700/40">
-        <img src={updoLogo} alt="UPDO" className="h-7 w-14 object-cover" />
-        <button
-          type="button"
-          onClick={() => setMenuOpen(true)}
-          aria-label="Open navigation menu"
-          aria-expanded={menuOpen}
-          aria-controls="mobile-navigation"
-          className="w-11 h-11 -mr-2 flex items-center justify-center text-indigo-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-purple-300 rounded-lg"
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-        </button>
-      </header>
-
-      {/* MOBILE ONLY (<md): right-side drawer */}
-      {menuOpen && (
-        <div className="md:hidden fixed inset-0 z-50">
-          <div
-            className="drawer-backdrop absolute inset-0 bg-black/50"
-            onClick={() => setMenuOpen(false)}
-            aria-hidden="true"
-          />
-          <nav
-            id="mobile-navigation"
-            aria-label="Dashboard navigation"
-            className="drawer-panel absolute right-0 top-0 h-full w-[218px] max-w-[80vw] bg-[#00061f] border-l border-slate-700/40 shadow-2xl"
-          >
-            <button
-              type="button"
-              onClick={() => setMenuOpen(false)}
-              aria-label="Close navigation menu"
-              className="absolute right-[10px] top-[10px] w-11 h-11 flex items-center justify-center text-indigo-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-purple-300 rounded-lg"
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            </button>
-
-            <ul className="pt-[111px] pl-6 pr-4 flex flex-col items-start gap-5">
-              {MOBILE_NAV.map((item, i) => {
-                const active = item.to === null;
-                return (
-                  <li
-                    key={item.label}
-                    className="drawer-item"
-                    style={{ animationDelay: `${180 + i * 70}ms` }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => handleMobileNav(item.to)}
-                      aria-current={active ? "page" : undefined}
-                      className={`text-indigo-100 text-2xl font-normal font-['K2D'] leading-tight whitespace-nowrap border-b-[3px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-300 ${
-                        active ? "border-purple-500" : "border-transparent"
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
-        </div>
-      )}
+      {/* Navbar handles both desktop pill nav and the mobile burger drawer. */}
+      <Navbar />
 
       <main className="max-w-5xl mx-auto px-4 pt-10 pb-24 gap-8 md:px-6 md:pt-16 md:pb-20 md:gap-12 flex flex-col items-center">
         {/* Headline */}
@@ -401,7 +260,6 @@ export default function Dashboard() {
                 <path d="M16 9V7H20V9H16ZM17.2 16L14 13.6L15.2 12L18.4 14.4L17.2 16ZM15.2 4L14 2.4L17.2 0L18.4 1.6L15.2 4ZM3 15V11H2C1.45 11 0.979167 10.8042 0.5875 10.4125C0.195833 10.0208 0 9.55 0 9V7C0 6.45 0.195833 5.97917 0.5875 5.5875C0.979167 5.19583 1.45 5 2 5H6L11 2V14L6 11H5V15H3ZM9 10.45V5.55L6.55 7H2V9H6.55L9 10.45ZM12 11.35V4.65C12.45 5.05 12.8125 5.5375 13.0875 6.1125C13.3625 6.6875 13.5 7.31667 13.5 8C13.5 8.68333 13.3625 9.3125 13.0875 9.8875C12.8125 10.4625 12.45 10.95 12 11.35Z" fill="#D0BCFF" />
               </svg>
             </div>
-            {/* Addition 1: show a real error/retry state instead of a bare number when the load truly failed. */}
             {loadError ? (
               <div className="flex items-center justify-between gap-3">
                 <span className="text-red-300 text-sm font-medium font-['K2D']">
@@ -557,6 +415,18 @@ export default function Dashboard() {
           </div>
         </div>
       </main>
+
+      {/* Log out — fixed bottom-left (mirrors Donate) */}
+      <button
+        type="button"
+        onClick={logout}
+        className="fixed bottom-4 left-4 md:bottom-6 md:left-6 z-40 flex items-center gap-2 px-5 py-3 rounded-full bg-gradient-to-r from-purple-300 to-fuchsia-300 text-violet-900 text-sm font-semibold font-['K2D'] shadow-[0_8px_24px_-4px_rgba(216,180,254,0.45)] hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-4px_rgba(216,180,254,0.6)] transition-all duration-200 active:scale-[0.97]"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        Log out
+      </button>
 
       {/* Donate — fixed bottom-right, Dashboard only */}
       <button

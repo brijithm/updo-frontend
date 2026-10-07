@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
 import CampaignPreview from "./CampaignPreview";
 import CampaignSuccess from "./CampaignSuccess";
@@ -7,8 +6,6 @@ import CampaignFailed from "./CampaignFailed";
 import BetaLimitReached from "./BetaLimitReached";
 import { generateCampaign } from "../services/campaignService";
 import { hasBrandSettings } from "../services/brandService";
-// MOBILE ONLY: same logo used in Dashboard's mobile header.
-import updoLogo from "../assets/logo.png";
 
 // ---------------------------------------------------------------------------
 // Full Campaign Creator wizard. Lives on ONE route. Steps are just internal
@@ -31,16 +28,6 @@ const ASPECT_RATIOS = [
   { id: "square", label: "1:1", name: "Square", sub: "Feed posts", available: true },
   { id: "portrait", label: "9:16", name: "Portrait", sub: "Stories & Reels", available: false },
   { id: "landscape", label: "16:9", name: "Landscape", sub: "Video & Ads", available: false },
-];
-
-// MOBILE ONLY: burger-menu drawer items (same set as Dashboard's).
-// `to: null` = current page (Campaign) -> just closes the drawer.
-const MOBILE_NAV = [
-  { label: "Dashboard", to: "/dashboard" },
-  { label: "Brand Setting", to: "/brand-settings" },
-  { label: "Campaign", to: null },
-  { label: "Scheduler", to: "/scheduler" },
-  { label: "Home", to: "/" },
 ];
 
 function RatioButton({ ratio, selected, onSelect }) {
@@ -124,8 +111,6 @@ const cardClass =
   "bg-gray-800 rounded-xl outline outline-1 outline-offset-[-1px] outline-neutral-600 p-4 md:p-8";
 
 export default function Campaign({ onBack, onLogout }) {
-  const navigate = useNavigate();
-
   // "form" -> "preview" -> "success" | "failed" | "limit_reached"
   const [step, setStep] = useState("form");
 
@@ -146,8 +131,7 @@ export default function Campaign({ onBack, onLogout }) {
   // Brand settings gate: default to NOT ready (blocked) until the backend
   // confirms the user has brand settings saved. Never optimistically allow
   // Generate before this resolves, and never fall back to "allowed" if the
-  // check itself errors out — that would let ungated requests hit the
-  // backend, which will 400/403 anyway but with a worse UX.
+  // check itself errors out.
   const [brandReady, setBrandReady] = useState(false);
   const [brandCheckLoading, setBrandCheckLoading] = useState(true);
   useEffect(() => {
@@ -173,8 +157,7 @@ export default function Campaign({ onBack, onLogout }) {
   };
 
   const handleGenerate = async () => {
-    // Belt-and-suspenders: even though the button is disabled while brand
-    // settings aren't ready, guard here too in case of a stale click.
+    // Belt-and-suspenders: guard here too in case of a stale click.
     if (!brandReady) return;
 
     setIsGenerating(true);
@@ -192,9 +175,7 @@ export default function Campaign({ onBack, onLogout }) {
       }
 
       // Backend-held generation lock rejected this request because one is
-      // already running for this user (double-click, second tab, or a
-      // retry after a lost/timed-out response). Stay on the form and let
-      // them know, rather than routing to the hard failure screen.
+      // already running for this user. Stay on the form and let them know.
       if (result?.status === "in_progress") {
         setGenerateError(
           result?.message ||
@@ -223,8 +204,7 @@ export default function Campaign({ onBack, onLogout }) {
     setStep("form");
   };
 
-  // Preview step "Confirm" -> image already downloaded by CampaignPreview,
-  // this just advances to the hidden success/rating page.
+  // Preview step "Confirm" -> advances to the hidden success/rating page.
   const handleConfirmed = () => {
     setStep("success");
   };
@@ -235,38 +215,6 @@ export default function Campaign({ onBack, onLogout }) {
     const id = requestAnimationFrame(() => setMounted(true));
     return () => cancelAnimationFrame(id);
   }, []);
-
-  // MOBILE ONLY: burger drawer state + smooth open/close (transition-based,
-  // matches the fixed-up Dashboard drawer — exit animation plays before unmount).
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [closing, setClosing] = useState(false);
-
-  function closeMenu() {
-    setClosing(true);
-    setTimeout(() => {
-      setMenuOpen(false);
-      setClosing(false);
-    }, 300); // must match the transition duration below
-  }
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onKey = (e) => {
-      if (e.key === "Escape") closeMenu();
-    };
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [menuOpen]);
-
-  function handleMobileNav(to) {
-    closeMenu();
-    if (to) navigate(to);
-  }
 
   const enter = (delay = "") =>
     `transition-all duration-700 ease-out ${delay} ${
@@ -294,7 +242,6 @@ export default function Campaign({ onBack, onLogout }) {
 
   if (step === "success") {
     // Hidden page — not in Navbar, reachable only via this flow.
-    // Its only nav action is Back -> Dashboard (onBack from parent route).
     return <CampaignSuccess campaignId={campaignResult?.campaignId} onBack={onBack} />;
   }
 
@@ -302,79 +249,8 @@ export default function Campaign({ onBack, onLogout }) {
 
   return (
     <div className="min-h-screen w-full bg-[#000b2e] md:bg-slate-900">
-      {/* Desktop/tablet (md+): existing Navbar, untouched. `md:contents` keeps
-          the wrapper from generating a box, so Navbar lays out exactly as before. */}
-      <div className="hidden md:contents">
-        <Navbar />
-      </div>
-
-      {/* MOBILE ONLY (<md): header with logo + burger */}
-      <header className="md:hidden sticky top-0 z-30 h-[66px] w-full flex items-center justify-between px-[15px] bg-[#000b2e]/90 backdrop-blur-md border-b border-slate-700/40">
-        <img src={updoLogo} alt="UPDO" className="h-7 w-14 object-cover" />
-        <button
-          type="button"
-          onClick={() => setMenuOpen(true)}
-          aria-label="Open navigation menu"
-          aria-expanded={menuOpen}
-          aria-controls="mobile-navigation"
-          className="w-11 h-11 -mr-2 flex items-center justify-center text-indigo-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-purple-300 rounded-lg"
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-        </button>
-      </header>
-
-      {/* MOBILE ONLY (<md): right-side drawer, smooth open + close */}
-      {(menuOpen || closing) && (
-        <div className="md:hidden fixed inset-0 z-50">
-          <div
-            className={`absolute inset-0 bg-black/50 transition-opacity duration-300 ${
-              closing ? "opacity-0" : "opacity-100"
-            }`}
-            onClick={closeMenu}
-            aria-hidden="true"
-          />
-          <nav
-            id="mobile-navigation"
-            aria-label="Campaign navigation"
-            className={`absolute right-0 top-0 h-full w-[218px] max-w-[80vw] bg-[#00061f] border-l border-slate-700/40 shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-              closing ? "translate-x-full" : "translate-x-0"
-            }`}
-          >
-            <button
-              type="button"
-              onClick={closeMenu}
-              aria-label="Close navigation menu"
-              className="absolute right-[10px] top-[10px] w-11 h-11 flex items-center justify-center text-indigo-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-purple-300 rounded-lg"
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            </button>
-
-            <ul className="pt-[111px] pl-6 pr-4 flex flex-col items-start gap-5">
-              {MOBILE_NAV.map((item) => {
-                const active = item.to === null;
-                return (
-                  <li key={item.label}>
-                    <button
-                      type="button"
-                      onClick={() => handleMobileNav(item.to)}
-                      aria-current={active ? "page" : undefined}
-                      className={`text-indigo-100 text-2xl font-normal font-['K2D'] leading-tight whitespace-nowrap border-b-[3px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-300 ${
-                        active ? "border-purple-500" : "border-transparent"
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
-        </div>
-      )}
+      {/* Navbar handles both desktop pill nav and the mobile burger drawer. */}
+      <Navbar />
 
       <main className="max-w-5xl mx-auto px-4 pt-6 pb-24 gap-3 md:px-6 md:pt-14 md:pb-16 md:gap-8 flex flex-col">
         {/* Choose Aspect Ratio */}

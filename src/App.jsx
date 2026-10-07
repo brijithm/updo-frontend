@@ -20,6 +20,7 @@ import RefundPolicy from "./components/RefundPolicy";
 import Scheduler from "./components/scheduler/Scheduler";
 import DonationThanks from "./components/DonationThanks";
 import { logoutUser } from "./services/authService";
+import LoggedInHome from "./components/LoggedInHome"; 
 
 // Thin wrapper so the /campaign route has somewhere to send onBack.
 // Campaign.jsx now owns its own internal steps (form -> preview -> success)
@@ -68,6 +69,7 @@ function App() {
       <Route path="/refund-policy" element={<RefundPolicy />} />
       <Route path="/scheduler" element={<Scheduler />} />
       <Route path="/donation-thanks" element={<DonationThanks />} />
+      <Route path="/home" element={<LoggedInHome />} />
 
       <Route
         path="/dashboard"

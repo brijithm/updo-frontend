@@ -1,13 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
 import { saveBrandSettings, getMyBrands, uploadBrandLogo } from "../services/brandService";
 import facebookIcon from "../assets/Facebook.svg";
 import linkedinIcon from "../assets/LinkedIn.svg";
 import instagramIcon from "../assets/Instagram.svg";
 import twitterIcon from "../assets/X.svg";
-// MOBILE ONLY: same logo used in Dashboard/Campaign's mobile header.
-import updoLogo from "../assets/logo.png";
 
 // ---------------------------------------------------------------------------
 // Brand creation is a ONE-TIME edit, not a live-editable settings page:
@@ -27,18 +24,6 @@ const SOCIAL_PLATFORMS = [
   { id: "linkedin", label: "LinkedIn", icon: linkedinIcon },
   { id: "instagram", label: "Instagram", icon: instagramIcon },
   { id: "twitter", label: "Twitter/X", icon: twitterIcon },
-];
-
-// MOBILE ONLY: category dropdown options (from the Anima mobile design).
-const MOBILE_CATEGORIES = ["Technology", "Retail", "Hospitality", "Healthcare", "Education", "Other"];
-
-// MOBILE ONLY: burger-menu drawer items (same set as Dashboard/Campaign).
-const MOBILE_NAV = [
-  { label: "Dashboard", to: "/dashboard" },
-  { label: "Brand Setting", to: null },
-  { label: "Campaign", to: "/campaign" },
-  { label: "Scheduler", to: "/scheduler" },
-  { label: "Home", to: "/" },
 ];
 
 const cardClass =
@@ -170,8 +155,6 @@ const EMPTY_SOCIALS = { facebook: "", linkedin: "", instagram: "", twitter: "" }
 const EMPTY_COLORS = { primary: "", secondary: "", accent: "" };
 
 export default function BrandSettings() {
-  const navigate = useNavigate();
-
   const [form, setForm] = useState(EMPTY_FORM);
   const [socialLinks, setSocialLinks] = useState(EMPTY_SOCIALS);
   const [colors, setColors] = useState(EMPTY_COLORS);
@@ -182,8 +165,7 @@ export default function BrandSettings() {
   const [saving, setSaving] = useState(false);
   const [loadingExisting, setLoadingExisting] = useState(true);
 
-  // On mount: check if the user already has a saved brand (from this
-  // session, an earlier one, or even Swagger) and pre-fill + lock if so.
+  // On mount: check if the user already has a saved brand and pre-fill + lock if so.
   useEffect(() => {
     async function loadExistingBrand() {
       try {
@@ -227,38 +209,6 @@ export default function BrandSettings() {
   }, []);
   const enter = (delay = "") =>
     `transition-all duration-700 ease-out ${delay} ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`;
-
-  // MOBILE ONLY: burger drawer state + smooth open/close (same pattern as
-  // Dashboard/Campaign — exit transition plays before unmount).
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [closing, setClosing] = useState(false);
-
-  function closeMenu() {
-    setClosing(true);
-    setTimeout(() => {
-      setMenuOpen(false);
-      setClosing(false);
-    }, 300); // must match the transition duration below
-  }
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onKey = (e) => {
-      if (e.key === "Escape") closeMenu();
-    };
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [menuOpen]);
-
-  function handleMobileNav(to) {
-    closeMenu();
-    if (to) navigate(to);
-  }
 
   const handleFieldChange = (e) => {
     const { name, value } = e.target;
@@ -333,78 +283,8 @@ export default function BrandSettings() {
 
   return (
     <div className="min-h-screen w-full bg-[#000b2e] md:bg-slate-900">
-      {/* Desktop/tablet (md+): existing Navbar, untouched. */}
-      <div className="hidden md:contents">
-        <Navbar />
-      </div>
-
-      {/* MOBILE ONLY (<md): header with logo + burger */}
-      <header className="md:hidden sticky top-0 z-30 h-[66px] w-full flex items-center justify-between px-[15px] bg-[#000b2e]/90 backdrop-blur-md border-b border-slate-700/40">
-        <img src={updoLogo} alt="UPDO" className="h-7 w-14 object-cover" />
-        <button
-          type="button"
-          onClick={() => setMenuOpen(true)}
-          aria-label="Open navigation menu"
-          aria-expanded={menuOpen}
-          aria-controls="mobile-navigation"
-          className="w-11 h-11 -mr-2 flex items-center justify-center text-indigo-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-purple-300 rounded-lg"
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-        </button>
-      </header>
-
-      {/* MOBILE ONLY (<md): right-side drawer, smooth open + close */}
-      {(menuOpen || closing) && (
-        <div className="md:hidden fixed inset-0 z-50">
-          <div
-            className={`absolute inset-0 bg-black/50 transition-opacity duration-300 ${
-              closing ? "opacity-0" : "opacity-100"
-            }`}
-            onClick={closeMenu}
-            aria-hidden="true"
-          />
-          <nav
-            id="mobile-navigation"
-            aria-label="Brand settings navigation"
-            className={`absolute right-0 top-0 h-full w-[218px] max-w-[80vw] bg-[#00061f] border-l border-slate-700/40 shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-              closing ? "translate-x-full" : "translate-x-0"
-            }`}
-          >
-            <button
-              type="button"
-              onClick={closeMenu}
-              aria-label="Close navigation menu"
-              className="absolute right-[10px] top-[10px] w-11 h-11 flex items-center justify-center text-indigo-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-purple-300 rounded-lg"
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            </button>
-
-            <ul className="pt-[111px] pl-6 pr-4 flex flex-col items-start gap-5">
-              {MOBILE_NAV.map((item) => {
-                const active = item.to === null;
-                return (
-                  <li key={item.label}>
-                    <button
-                      type="button"
-                      onClick={() => handleMobileNav(item.to)}
-                      aria-current={active ? "page" : undefined}
-                      className={`text-indigo-100 text-2xl font-normal font-['K2D'] leading-tight whitespace-nowrap border-b-[3px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-300 ${
-                        active ? "border-purple-500" : "border-transparent"
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
-        </div>
-      )}
+      {/* Navbar handles both desktop pill nav and the mobile burger drawer. */}
+      <Navbar />
 
       {/* ===================================================================
           DESKTOP (md and up) — untouched, exact original markup.
@@ -543,9 +423,7 @@ export default function BrandSettings() {
               ))}
             </section>
 
-            {/* Reset is only available BEFORE confirmation — disabled once
-                the brand is locked in, since only one confirmation is
-                allowed per brand. */}
+            {/* Reset is only available BEFORE confirmation. */}
             <div className={`flex flex-col items-center gap-4 ${enter("delay-300")}`}>
               <button
                 type="button"
@@ -570,12 +448,8 @@ export default function BrandSettings() {
       </main>
 
       {/* ===================================================================
-          MOBILE (<md) — built from the Anima mobile design, converted from
-          its fixed absolute-pixel layout to a normal flow layout so it
-          works across real phone heights. Section order follows Anima:
-          Profile Identity -> Color Palette -> Social Links -> Logo Upload
-          -> Reset/Confirm. Niche field added (missing from the Anima
-          design but present on desktop).
+          MOBILE (<md) — normal flow layout. Section order: Profile Identity
+          -> Color Palette -> Social Links -> Logo Upload -> Reset/Confirm.
           =================================================================== */}
       <main className="md:hidden max-w-md mx-auto px-4 pt-6 pb-24 flex flex-col gap-4">
         <div className={`text-center flex flex-col gap-1 mb-2 ${enter()}`}>
@@ -613,7 +487,6 @@ export default function BrandSettings() {
             placeholder="e.g. SaaS, Retail, Food"
           />
 
-          {/* Niche — present on desktop, missing from the Anima mobile design; added here to match. */}
           <MobileFormField
             label="Niche"
             name="niche"
@@ -664,32 +537,31 @@ export default function BrandSettings() {
           </p>
 
           {["primary", "secondary", "accent"].map((key) => (
-          <div key={key} className="flex items-center gap-3">
-            <span className="text-white text-xs font-['Poppins'] capitalize w-[76px] shrink-0">
-              {key} :
-            </span>
-            <div className="flex flex-1 min-w-0 items-center justify-end gap-2">
-              <input
-                type="text"
-                name={key}
-                value={colors[key]}
-                onChange={handleColorChange}
-                disabled={isLocked}
-                placeholder="Hex Code"
-                maxLength={9}
-                className="w-0 flex-1 min-w-0 max-w-[9.5rem] h-9 px-2.5 bg-slate-950 rounded-lg outline outline-1 outline-offset-[-1px] outline-neutral-600 text-white text-xs font-['Poppins'] placeholder:text-white/40 focus:outline-purple-300"
-              />
-              <div
-                className="w-7 h-7 rounded-md outline outline-1 outline-offset-[-1px] outline-neutral-600 shrink-0"
-                style={{ backgroundColor: colors[key] || "transparent" }}
-              />
+            <div key={key} className="flex items-center gap-3">
+              <span className="text-white text-xs font-['Poppins'] capitalize w-[76px] shrink-0">
+                {key} :
+              </span>
+              <div className="flex flex-1 min-w-0 items-center justify-end gap-2">
+                <input
+                  type="text"
+                  name={key}
+                  value={colors[key]}
+                  onChange={handleColorChange}
+                  disabled={isLocked}
+                  placeholder="Hex Code"
+                  maxLength={9}
+                  className="w-0 flex-1 min-w-0 max-w-[9.5rem] h-9 px-2.5 bg-slate-950 rounded-lg outline outline-1 outline-offset-[-1px] outline-neutral-600 text-white text-xs font-['Poppins'] placeholder:text-white/40 focus:outline-purple-300"
+                />
+                <div
+                  className="w-7 h-7 rounded-md outline outline-1 outline-offset-[-1px] outline-neutral-600 shrink-0"
+                  style={{ backgroundColor: colors[key] || "transparent" }}
+                />
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
         </section>
 
-        {/* Social Media Links — own section on mobile, per the Anima design
-            (desktop keeps these embedded inside Profile Identity). */}
+        {/* Social Media Links */}
         <section className={`flex flex-col gap-4 transition-opacity duration-500 ${isLocked ? "opacity-50 pointer-events-none" : ""} ${cardClass} p-5 ${enter("delay-200")}`}>
           <h2 className="text-indigo-100 text-lg font-semibold font-['K2D']">Social Links</h2>
           <div className="flex flex-wrap justify-center gap-3">

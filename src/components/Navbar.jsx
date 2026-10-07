@@ -1,47 +1,76 @@
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
-// MOBILE ONLY: same logo used across the app's mobile headers.
+import { createPortal } from "react-dom";
 import updoLogo from "../assets/logo.png";
+import { logout } from "../services/sessionUtils";
 
-// Shared top nav used on Dashboard, Campaign, Scheduler, Brand Settings, and Home.
-// Active-route highlighting is handled by NavLink; the underline position
-// is tracked separately (desktop only) so it can slide smoothly between tabs.
 const NAV_LINKS = [
   { label: "Dashboard", to: "/dashboard" },
   { label: "Campaign", to: "/campaign" },
   { label: "Scheduler", to: "/scheduler" },
   { label: "Brand Settings", to: "/brand-settings" },
-  { label: "Home", to: "/" },
+  { label: "Home", to: "/home" },
 ];
+
+const OPEN_EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
+const CLOSE_MS = 300;
 
 export default function Navbar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const linkRefs = useRef({});
   const [indicator, setIndicator] = useState({ left: 0, width: 0, opacity: 0 });
 
   useEffect(() => {
-    const active = NAV_LINKS.find((link) =>
-      link.to === "/" ? location.pathname === "/" : location.pathname.startsWith(link.to)
-    );
+    const active = NAV_LINKS.find((link) => location.pathname.startsWith(link.to));
     const el = active && linkRefs.current[active.to];
     if (el) {
       setIndicator({ left: el.offsetLeft, width: el.offsetWidth, opacity: 1 });
     }
   }, [location.pathname]);
 
-  // MOBILE ONLY: burger drawer state + smooth open/close.
-  // Open: keyframe slide-in + staggered link entrance (same as Dashboard's drawer).
-  // Close: transition plays before the drawer unmounts, no snap-close.
+  // MOBILE drawer
   const [menuOpen, setMenuOpen] = useState(false);
-  const [closing, setClosing] = useState(false);
+  const [shown, setShown] = useState(false);
+  const timerRef = useRef(null);
+  const closingRef = useRef(false);
 
-  function closeMenu() {
-    setClosing(true);
-    setTimeout(() => {
-      setMenuOpen(false);
-      setClosing(false);
-    }, 300); // must match the transition duration below
+  function openMenu() {
+    clearTimeout(timerRef.current);
+    closingRef.current = false;
+    setMenuOpen(true);
   }
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    let r2;
+    const r1 = requestAnimationFrame(() => {
+      r2 = requestAnimationFrame(() => setShown(true));
+    });
+    return () => {
+      cancelAnimationFrame(r1);
+      cancelAnimationFrame(r2);
+    };
+  }, [menuOpen]);
+
+  function closeMenu(afterClose) {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    setShown(false);
+    timerRef.current = setTimeout(() => {
+      setMenuOpen(false);
+      closingRef.current = false;
+      if (afterClose) afterClose();
+    }, CLOSE_MS);
+  }
+
+  function handleLinkClick(e, to) {
+    e.preventDefault();
+    if (location.pathname === to) closeMenu();
+    else closeMenu(() => navigate(to));
+  }
+
+  useEffect(() => () => clearTimeout(timerRef.current), []);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -57,50 +86,114 @@ export default function Navbar() {
     };
   }, [menuOpen]);
 
+  const drawer = menuOpen
+    ? createPortal(
+        <div className="md:hidden fixed inset-0 z-[100]">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50"
+            style={{
+              opacity: shown ? 1 : 0,
+              transition: shown
+                ? "opacity 250ms ease-out"
+                : `opacity ${CLOSE_MS}ms ease-in`,
+            }}
+            onClick={() => closeMenu()}
+            aria-hidden="true"
+          />
+
+          {/* Panel */}
+          <nav
+            id="mobile-navigation"
+            aria-label="Main navigation"
+            className="absolute right-0 top-0 h-full w-[218px] max-w-[80vw] bg-[#00061f] border-l border-slate-700/40 shadow-2xl"
+            style={{
+              transform: shown ? "translateX(0)" : "translateX(100%)",
+              transition: shown
+                ? `transform 350ms ${OPEN_EASE}`
+                : `transform ${CLOSE_MS}ms cubic-bezier(0.4, 0, 1, 1)`,
+              willChange: "transform",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => closeMenu()}
+              aria-label="Close navigation menu"
+              className="absolute right-[10px] top-[10px] w-11 h-11 flex items-center justify-center text-indigo-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-purple-300 rounded-lg"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </button>
+
+            <ul className="pt-[111px] pl-6 pr-4 flex flex-col items-start gap-5">
+              {NAV_LINKS.map((link, i) => (
+                <li
+                  key={link.to}
+                  style={{
+                    opacity: shown ? 1 : 0,
+                    transform: shown ? "translateX(0)" : "translateX(40px)",
+                    transition: shown
+                      ? `opacity 450ms ${OPEN_EASE} ${180 + i * 70}ms, transform 450ms ${OPEN_EASE} ${180 + i * 70}ms`
+                      : "opacity 150ms ease-in, transform 150ms ease-in",
+                  }}
+                >
+                  <NavLink
+                    to={link.to}
+                    onClick={(e) => handleLinkClick(e, link.to)}
+                    className={({ isActive }) =>
+                      `text-indigo-100 text-2xl font-normal font-['K2D'] leading-tight whitespace-nowrap border-b-[3px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-300 ${
+                        isActive ? "border-purple-500" : "border-transparent"
+                      }`
+                    }
+                  >
+                    {link.label}
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+
+            {/* Log out */}
+            <div
+              className="absolute bottom-0 left-0 right-0 px-6 pt-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] border-t border-slate-700/40"
+              style={{
+                opacity: shown ? 1 : 0,
+                transition: shown
+                  ? `opacity 450ms ${OPEN_EASE} ${180 + NAV_LINKS.length * 70}ms`
+                  : "opacity 150ms ease-in",
+              }}
+            >
+              <button
+                type="button"
+                onClick={logout}
+                className="w-full h-11 flex items-center justify-center gap-2 rounded-lg outline outline-1 outline-offset-[-1px] outline-slate-600 text-indigo-100 text-base font-['K2D'] hover:bg-slate-800/60 active:scale-[0.98] transition-all"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Log out
+              </button>
+            </div>
+          </nav>
+        </div>,
+        document.body
+      )
+    : null;
+
   return (
     <>
-      {/* MOBILE ONLY: drawer open animations. No fill-mode on the panel/backdrop
-          so the closing transition below can still move them. */}
-      <style>{`
-        @keyframes navDrawerFade {
-          from { opacity: 0; }
-          to   { opacity: 1; }
-        }
-        @keyframes navDrawerSlideIn {
-          from { transform: translateX(100%); }
-          to   { transform: translateX(0); }
-        }
-        @keyframes navDrawerItemIn {
-          from { opacity: 0; transform: translateX(40px); }
-          to   { opacity: 1; transform: translateX(0); }
-        }
-        .nav-drawer-backdrop { animation: navDrawerFade 250ms ease-out; }
-        .nav-drawer-panel    { animation: navDrawerSlideIn 350ms cubic-bezier(0.22, 1, 0.36, 1); }
-        .nav-drawer-item     { animation: navDrawerItemIn 450ms cubic-bezier(0.22, 1, 0.36, 1) both; }
-
-        @media (prefers-reduced-motion: reduce) {
-          .nav-drawer-backdrop, .nav-drawer-panel, .nav-drawer-item { animation: none; }
-        }
-      `}</style>
-
-      {/* ===================================================================
-          DESKTOP / TABLET (md and up) — original floating pill nav, untouched.
-          =================================================================== */}
+      {/* DESKTOP / TABLET (md+) */}
       <header className="hidden md:flex relative w-full justify-center pt-8">
-        {/* Ambient glow behind the nav — gives the backdrop-blur something to catch */}
         <div className="absolute left-1/2 -translate-x-1/2 top-3 w-72 h-14 bg-purple-500/10 rounded-full blur-2xl pointer-events-none" />
 
         <nav className="relative overflow-hidden flex items-center gap-2 bg-purple-900/20 backdrop-blur-xl outline outline-1 outline-offset-[-1px] outline-white/15 shadow-[0_8px_32px_rgba(80,40,150,0.25)] rounded-[50px] px-2 py-2 before:content-[''] before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/10 before:to-white/0 before:pointer-events-none">
-          {/* Logo pill */}
           <div className="relative overflow-hidden bg-purple-800/30 backdrop-blur-md outline outline-1 outline-offset-[-1px] outline-white/10 shadow-[0_2px_10px_rgba(90,40,160,0.2)] rounded-[50px] px-6 py-3 before:content-[''] before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/10 before:to-white/0 before:pointer-events-none">
             <span className="relative text-neutral-100 text-2xl font-normal font-['K2D']">
               UPDO AI
             </span>
           </div>
 
-          {/* Links */}
           <ul className="relative flex items-center gap-8 px-6">
-            {/* Sliding active-tab indicator — repositions on route change */}
             <span
               className="absolute -bottom-1 h-[3px] rounded-full bg-purple-500 shadow-[0_0_4px_1px_rgba(169,88,250,0.5)] transition-all duration-300 ease-out"
               style={{ left: indicator.left, width: indicator.width, opacity: indicator.opacity }}
@@ -123,14 +216,12 @@ export default function Navbar() {
         </nav>
       </header>
 
-      {/* ===================================================================
-          MOBILE (<md) — logo + burger header, right-side drawer.
-          =================================================================== */}
+      {/* MOBILE (<md) header */}
       <header className="md:hidden sticky top-0 z-30 h-[66px] w-full flex items-center justify-between px-[15px] bg-[#000b2e]/90 backdrop-blur-md border-b border-slate-700/40">
         <img src={updoLogo} alt="UPDO" className="h-7 w-14 object-cover" />
         <button
           type="button"
-          onClick={() => setMenuOpen(true)}
+          onClick={openMenu}
           aria-label="Open navigation menu"
           aria-expanded={menuOpen}
           aria-controls="mobile-navigation"
@@ -142,57 +233,7 @@ export default function Navbar() {
         </button>
       </header>
 
-      {(menuOpen || closing) && (
-        <div className="md:hidden fixed inset-0 z-50">
-          <div
-            className={`nav-drawer-backdrop absolute inset-0 bg-black/50 transition-opacity duration-300 ${
-              closing ? "opacity-0" : "opacity-100"
-            }`}
-            onClick={closeMenu}
-            aria-hidden="true"
-          />
-          <nav
-            id="mobile-navigation"
-            aria-label="Main navigation"
-            className={`nav-drawer-panel absolute right-0 top-0 h-full w-[218px] max-w-[80vw] bg-[#00061f] border-l border-slate-700/40 shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-              closing ? "translate-x-full" : "translate-x-0"
-            }`}
-          >
-            <button
-              type="button"
-              onClick={closeMenu}
-              aria-label="Close navigation menu"
-              className="absolute right-[10px] top-[10px] w-11 h-11 flex items-center justify-center text-indigo-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-purple-300 rounded-lg"
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            </button>
-
-            <ul className="pt-[111px] pl-6 pr-4 flex flex-col items-start gap-5">
-              {NAV_LINKS.map((link, i) => (
-                <li
-                  key={link.to}
-                  className="nav-drawer-item"
-                  style={{ animationDelay: `${180 + i * 70}ms` }}
-                >
-                  <NavLink
-                    to={link.to}
-                    onClick={closeMenu}
-                    className={({ isActive }) =>
-                      `text-indigo-100 text-2xl font-normal font-['K2D'] leading-tight whitespace-nowrap border-b-[3px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-300 ${
-                        isActive ? "border-purple-500" : "border-transparent"
-                      }`
-                    }
-                  >
-                    {link.label}
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        </div>
-      )}
+      {drawer}
     </>
   );
 }
