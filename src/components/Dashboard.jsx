@@ -416,18 +416,17 @@ export default function Dashboard() {
         </div>
       </main>
 
-      {/* Log out — fixed bottom-left (mirrors Donate) */}
+      {/* Log out — desktop only, fixed bottom-left (mobile uses the burger menu) */}
       <button
         type="button"
         onClick={logout}
-        className="fixed bottom-4 left-4 md:bottom-6 md:left-6 z-40 flex items-center gap-2 px-5 py-3 rounded-full bg-gradient-to-r from-purple-300 to-fuchsia-300 text-violet-900 text-sm font-semibold font-['K2D'] shadow-[0_8px_24px_-4px_rgba(216,180,254,0.45)] hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-4px_rgba(216,180,254,0.6)] transition-all duration-200 active:scale-[0.97]"
+        className="hidden md:flex fixed md:bottom-6 md:left-6 z-40 items-center gap-2 px-5 py-3 rounded-full bg-gradient-to-r from-purple-300 to-fuchsia-300 text-violet-900 text-sm font-semibold font-['K2D'] shadow-[0_8px_24px_-4px_rgba(216,180,254,0.45)] hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-4px_rgba(216,180,254,0.6)] transition-all duration-200 active:scale-[0.97]"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         Log out
       </button>
-
       {/* Donate — fixed bottom-right, Dashboard only */}
       <button
         onClick={() => setDonationOpen(true)}
