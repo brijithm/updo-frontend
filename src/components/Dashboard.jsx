@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
 import { hasBrandSettings } from "../services/brandService";
-import { getMyCampaigns, getUsageSummary } from "../services/campaignService";
 import { openDonationCheckout } from "../services/donationService";
 import { downloadImageFromUrl } from "../services/formUtils";
 import { logout } from "../services/sessionUtils";
