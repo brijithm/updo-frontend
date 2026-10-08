@@ -104,37 +104,37 @@ export async function generateCampaign(rawPayload) {
 }
 
 /**
- * Saves the user's post-generation experience rating.
- *
- * TODO when wiring up for real:
- *   - POST `${API_BASE_URL}/campaigns/${campaignId}/rating` with { rating }
+ * Saves the user's post-generation experience rating (1-5).
+ * POST /feedback/rating  — one rating per asset, re-rating replaces it.
  */
 export async function submitCampaignRating(campaignId, rating) {
-  console.log("[campaignService] submitCampaignRating called with:", { campaignId, rating });
-
-  // --- MOCK IMPLEMENTATION (remove once backend is wired) -------------------
-  await new Promise((resolve) => setTimeout(resolve, 300));
-  return { success: true };
-  // ---------------------------------------------------------------------------
-
-  // --- REAL IMPLEMENTATION ---------------------------------------------------
-  // const response = await authFetch(`/campaigns/${campaignId}/rating`, {
-  //   method: "POST",
-  //   body: JSON.stringify({ rating }),
-  // });
-  // if (!response.ok) throw new Error("Failed to submit rating");
-  // return response.json();
+  const response = await authFetch("/feedback/rating", {
+    method: "POST",
+    body: JSON.stringify({ campaign_id: campaignId, rating }),
+  });
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null);
+    throw new Error(errorBody?.detail || "Failed to submit rating");
+  }
+  return response.json();
 }
 
 /**
- * Fetches the logged-in user's campaigns from the real backend.
- * GET /campaigns/my-campaigns  ->  { campaigns: [...], count: N }
- *
- * Maps backend fields (campaign_goal, campaign_status, created_at,
- * image_url) into the shape Dashboard.jsx / the campaigns list page
- * expect (name, status, date, imageUrl) so no JSX has to change beyond
- * consuming `imageUrl` — only this function maps field names.
+ * Fire-and-forget event recording. type: "regenerate" | "download" | "publish".
+ * Never throws and never blocks the UI — signal failures must not break UX.
  */
+export function recordCampaignSignal(type, campaignId, extra = {}) {
+  if (!campaignId) return Promise.resolve(null);
+  return authFetch(`/feedback/${type}`, {
+    method: "POST",
+    body: JSON.stringify({ campaign_id: campaignId, ...extra }),
+  })
+    .then((r) => (r.ok ? r.json() : null))
+    .catch((err) => {
+      console.warn(`[campaignService] ${type} signal failed:`, err);
+      return null;
+    });
+}
 export async function getMyCampaigns() {
   const response = await authFetch("/campaigns/my-campaigns");
 

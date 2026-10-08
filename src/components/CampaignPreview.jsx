@@ -3,6 +3,7 @@ import Navbar from "./Navbar";
 import DonationThanks from "./DonationThanks";
 import { downloadImageFromUrl } from "../services/formUtils";
 import { openDonationCheckout } from "../services/donationService";
+import { recordCampaignSignal } from "../services/campaignService";
 
 // Responsive: base classes = mobile (Figma "Campaign - 21"); `md:` = the
 // original desktop values, unchanged. The mobile header + drawer come from the
@@ -23,6 +24,7 @@ export default function CampaignPreview({ campaignResult, onRedo, onConfirmed, o
     setDownloadError(null);
     try {
       await downloadImageFromUrl(imageUrl, `updo-campaign-${campaignResult.campaignId}.png`);
+            recordCampaignSignal("download", campaignResult.campaignId, { source: "preview" });
       onConfirmed?.();
     } catch (err) {
       setDownloadError("Couldn't download the image. Please try again.");
@@ -139,7 +141,10 @@ export default function CampaignPreview({ campaignResult, onRedo, onConfirmed, o
         <div className="flex justify-between items-center">
           <button
             type="button"
-            onClick={onRedo}
+            onClick={() => {
+              recordCampaignSignal("regenerate", campaignResult?.campaignId);
+              onRedo?.();
+            }}
             className="flex items-center gap-2 md:gap-3 px-4 md:px-6 h-12 md:h-14 rounded-full outline outline-1 outline-offset-[-1px] outline-neutral-600 text-indigo-100 text-sm md:text-base font-normal font-['Poppins'] hover:bg-slate-800/50 transition-colors"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">

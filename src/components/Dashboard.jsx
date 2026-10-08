@@ -6,6 +6,7 @@ import { getMyCampaigns, getUsageSummary } from "../services/campaignService";
 import { openDonationCheckout } from "../services/donationService";
 import { downloadImageFromUrl } from "../services/formUtils";
 import { logout } from "../services/sessionUtils";
+import { getMyCampaigns, getUsageSummary, recordCampaignSignal } from "../services/campaignService";
 
 function StatusBadge({ status }) {
   const isPublished = status === "Published";
@@ -34,6 +35,7 @@ function DownloadButton({ campaign }) {
     setDownloading(true);
     try {
       await downloadImageFromUrl(campaign.imageUrl, `updo-campaign-${campaign.id}.png`);
+            recordCampaignSignal("download", campaign.id, { source: "dashboard" });
     } catch (err) {
       console.error("[Dashboard] Failed to download campaign image:", err);
     } finally {
